@@ -24,6 +24,7 @@ classifiers = [
 ]
 
 dependencies = [
+    "carla>=0.9.16",
     "mlflow>=3.13.0",
     "numpy>=2.4.6",
     "onnxruntime>=1.26.0",
@@ -42,6 +43,9 @@ dev = [
     "ruff>=0.4",
     "black>=24.0",
     "pre-commit>=3.7",
+]
+viewer = [
+    "pygame>=2.6.1",
 ]
 
 [project.urls]
@@ -92,6 +96,10 @@ warn_return_any = true
 warn_unused_configs = true
 ignore_missing_imports = false
 mypy_path = "src"
+
+[[tool.mypy.overrides]]
+module = "carla"
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
