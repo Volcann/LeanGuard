@@ -75,8 +75,11 @@ logs:
 ps:
 	@$(dc) ps
 
-CARLA_PID_FILE := /tmp/leanguard_carla.pid
+CARLA_PROC    := CarlaUE4-Linux-Shipping
 CARLA_LOG_FILE := /tmp/leanguard_carla.log
+
+carla_pid     = $$(pgrep -f "$(CARLA_PROC).*carla-rpc-port=$(CARLA_PORT)" 2>/dev/null | head -1)
+carla_running = pgrep -f "$(CARLA_PROC).*carla-rpc-port=$(CARLA_PORT)" > /dev/null 2>&1
 
 .PHONY: carla
 carla:
@@ -85,28 +88,27 @@ carla:
 		printf "  Set CARLA_ROOT in .env or environment.\n"; \
 		exit 1; \
 	fi
-	@if [ -f "$(CARLA_PID_FILE)" ] && kill -0 $$(cat $(CARLA_PID_FILE)) 2>/dev/null; then \
-		printf "$(YELLOW)⚠ CARLA already running (pid=$$(cat $(CARLA_PID_FILE)))$(RESET)\n"; \
+	@if $(carla_running); then \
+		printf "$(YELLOW)⚠ CARLA already running (pid=$(carla_pid), port=$(CARLA_PORT))$(RESET)\n"; \
 		exit 0; \
 	fi
 	@printf "  Starting CARLA on port $(CARLA_PORT)...\n"
 	@DISPLAY=:0 nohup $(CARLA_ROOT)/CarlaUE4.sh \
 		-RenderOffScreen -quality-level=Low \
 		-fps=20 -nosound -carla-rpc-port=$(CARLA_PORT) \
-		> $(CARLA_LOG_FILE) 2>&1 & \
-		echo $$! > $(CARLA_PID_FILE)
-	@sleep 2
-	@if kill -0 $$(cat $(CARLA_PID_FILE)) 2>/dev/null; then \
-		printf "  $(GREEN)✔ CARLA started$(RESET) (pid=$$(cat $(CARLA_PID_FILE))) → log: $(CARLA_LOG_FILE)\n"; \
-	 else \
+		> $(CARLA_LOG_FILE) 2>&1 &
+	@sleep 5
+	@if $(carla_running); then \
+		printf "  $(GREEN)✔ CARLA started$(RESET) (pid=$(carla_pid), port=$(CARLA_PORT)) → log: $(CARLA_LOG_FILE)\n"; \
+	else \
 		printf "$(BOLD)\033[31m✗ CARLA failed to start — check log: $(CARLA_LOG_FILE)$(RESET)\n"; \
 		exit 1; \
 	fi
 
 .PHONY: carla.stop
 carla.stop:
-	@if [ -f "$(CARLA_PID_FILE)" ] && kill -0 $$(cat $(CARLA_PID_FILE)) 2>/dev/null; then \
-		kill $$(cat $(CARLA_PID_FILE)) && rm -f $(CARLA_PID_FILE); \
+	@if $(carla_running); then \
+		pkill -f "$(CARLA_PROC).*carla-rpc-port=$(CARLA_PORT)"; \
 		printf "  $(GREEN)✔ CARLA stopped$(RESET)\n"; \
 	else \
 		printf "  $(YELLOW)CARLA is not running$(RESET)\n"; \
@@ -114,8 +116,8 @@ carla.stop:
 
 .PHONY: carla.status
 carla.status:
-	@if [ -f "$(CARLA_PID_FILE)" ] && kill -0 $$(cat $(CARLA_PID_FILE)) 2>/dev/null; then \
-		printf "  $(GREEN)✔ CARLA running$(RESET) (pid=$$(cat $(CARLA_PID_FILE)), port=$(CARLA_PORT))\n"; \
+	@if $(carla_running); then \
+		printf "  $(GREEN)✔ CARLA running$(RESET) (pid=$(carla_pid), port=$(CARLA_PORT))\n"; \
 	else \
 		printf "  $(YELLOW)✗ CARLA not running$(RESET)\n"; \
 	fi
