@@ -36,6 +36,7 @@ help:
 	@printf "  $(GREEN)Application$(RESET)\n"
 	@printf "    $(BOLD)app$(RESET)          Run LeanGuard via python -m\n"
 	@printf "    $(BOLD)pygame$(RESET)       Run Pygame CARLA client via python -m\n"
+	@printf "    $(BOLD)build$(RESET)        Build wheel and sdist into dist/\n"
 	@echo ""
 	@printf "  $(GREEN)Development$(RESET)\n"
 	@printf "    $(BOLD)lint$(RESET)         Run ruff linter\n"
@@ -90,6 +91,11 @@ app:
 .PHONY: pygame
 pygame:
 	uv run python -m $(PYGAME_MODULE)
+
+.PHONY: build
+build:
+	uv build
+	@echo "$(success)"
 
 .PHONY: lint
 lint:
