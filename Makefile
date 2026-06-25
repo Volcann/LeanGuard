@@ -8,7 +8,7 @@ success        := ✔ done
 export
 
 CARLA_ROOT     ?= /opt/carla-simulator
-APP_MODULE     ?= leanguard.main
+APP_MODULE     ?= leanguard
 PYGAME_MODULE  ?= leanguard.viewer
 CACHE_DIRS     := __pycache__ .mypy_cache .ruff_cache .pytest_cache htmlcov dist
 
@@ -31,10 +31,12 @@ help:
 	@printf "    $(BOLD)ps$(RESET)           Show container status\n"
 	@echo ""
 	@printf "  $(GREEN)Simulation$(RESET)\n"
-	@printf "    $(BOLD)carla$(RESET)        Launch native CARLA server (off-screen, low quality)\n"
+	@printf "    $(BOLD)carla$(RESET)        Launch CARLA server in background (detached)\n"
+	@printf "    $(BOLD)carla.stop$(RESET)   Stop the CARLA background server\n"
+	@printf "    $(BOLD)carla.status$(RESET) Show CARLA server status\n"
 	@echo ""
 	@printf "  $(GREEN)Application$(RESET)\n"
-	@printf "    $(BOLD)app$(RESET)          Run LeanGuard via python -m\n"
+	@printf "    $(BOLD)app$(RESET)          Run LeanGuard (python -m leanguard)\n"
 	@printf "    $(BOLD)pygame$(RESET)       Run Pygame CARLA client via python -m\n"
 	@printf "    $(BOLD)build$(RESET)        Build wheel and sdist into dist/\n"
 	@echo ""
@@ -73,6 +75,9 @@ logs:
 ps:
 	@$(dc) ps
 
+CARLA_PID_FILE := /tmp/leanguard_carla.pid
+CARLA_LOG_FILE := /tmp/leanguard_carla.log
+
 .PHONY: carla
 carla:
 	@if [ ! -f "$(CARLA_ROOT)/CarlaUE4.sh" ]; then \
@@ -80,9 +85,40 @@ carla:
 		printf "  Set CARLA_ROOT in .env or environment.\n"; \
 		exit 1; \
 	fi
-	SDL_VIDEODRIVER=offscreen $(CARLA_ROOT)/CarlaUE4.sh \
-		-RenderOffScreen -quality-level=Low -benchmark \
-		-fps=20 -nosound -carla-rpc-port=$(CARLA_PORT)
+	@if [ -f "$(CARLA_PID_FILE)" ] && kill -0 $$(cat $(CARLA_PID_FILE)) 2>/dev/null; then \
+		printf "$(YELLOW)⚠ CARLA already running (pid=$$(cat $(CARLA_PID_FILE)))$(RESET)\n"; \
+		exit 0; \
+	fi
+	@printf "  Starting CARLA on port $(CARLA_PORT)...\n"
+	@DISPLAY=:0 nohup $(CARLA_ROOT)/CarlaUE4.sh \
+		-RenderOffScreen -quality-level=Low \
+		-fps=20 -nosound -carla-rpc-port=$(CARLA_PORT) \
+		> $(CARLA_LOG_FILE) 2>&1 & \
+		echo $$! > $(CARLA_PID_FILE)
+	@sleep 2
+	@if kill -0 $$(cat $(CARLA_PID_FILE)) 2>/dev/null; then \
+		printf "  $(GREEN)✔ CARLA started$(RESET) (pid=$$(cat $(CARLA_PID_FILE))) → log: $(CARLA_LOG_FILE)\n"; \
+	 else \
+		printf "$(BOLD)\033[31m✗ CARLA failed to start — check log: $(CARLA_LOG_FILE)$(RESET)\n"; \
+		exit 1; \
+	fi
+
+.PHONY: carla.stop
+carla.stop:
+	@if [ -f "$(CARLA_PID_FILE)" ] && kill -0 $$(cat $(CARLA_PID_FILE)) 2>/dev/null; then \
+		kill $$(cat $(CARLA_PID_FILE)) && rm -f $(CARLA_PID_FILE); \
+		printf "  $(GREEN)✔ CARLA stopped$(RESET)\n"; \
+	else \
+		printf "  $(YELLOW)CARLA is not running$(RESET)\n"; \
+	fi
+
+.PHONY: carla.status
+carla.status:
+	@if [ -f "$(CARLA_PID_FILE)" ] && kill -0 $$(cat $(CARLA_PID_FILE)) 2>/dev/null; then \
+		printf "  $(GREEN)✔ CARLA running$(RESET) (pid=$$(cat $(CARLA_PID_FILE)), port=$(CARLA_PORT))\n"; \
+	else \
+		printf "  $(YELLOW)✗ CARLA not running$(RESET)\n"; \
+	fi
 
 .PHONY: app
 app:
