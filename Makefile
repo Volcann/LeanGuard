@@ -75,11 +75,10 @@ logs:
 ps:
 	@$(dc) ps
 
-CARLA_PROC    := CarlaUE4-Linux-Shipping
 CARLA_LOG_FILE := /tmp/leanguard_carla.log
 
-carla_pid     = $$(pgrep -f "$(CARLA_PROC).*carla-rpc-port=$(CARLA_PORT)" 2>/dev/null | head -1)
-carla_running = pgrep -f "$(CARLA_PROC).*carla-rpc-port=$(CARLA_PORT)" > /dev/null 2>&1
+carla_pid     = $$(ss -tlnp 2>/dev/null | grep ":$(CARLA_PORT) " | grep -oP 'pid=\K[0-9]+' | head -1)
+carla_running = ss -tlnp 2>/dev/null | grep -q ":$(CARLA_PORT) "
 
 .PHONY: carla
 carla:
@@ -92,12 +91,16 @@ carla:
 		printf "$(YELLOW)⚠ CARLA already running (pid=$(carla_pid), port=$(CARLA_PORT))$(RESET)\n"; \
 		exit 0; \
 	fi
-	@printf "  Starting CARLA on port $(CARLA_PORT)...\n"
+	@printf "  Starting CARLA on port $(CARLA_PORT)"
 	@DISPLAY=:0 nohup $(CARLA_ROOT)/CarlaUE4.sh \
 		-RenderOffScreen -quality-level=Low \
 		-fps=20 -nosound -carla-rpc-port=$(CARLA_PORT) \
 		> $(CARLA_LOG_FILE) 2>&1 &
-	@sleep 5
+	@i=0; while [ $$i -lt 30 ]; do \
+		sleep 1; printf "."; \
+		if $(carla_running); then break; fi; \
+		i=$$((i+1)); \
+	done; printf "\n"
 	@if $(carla_running); then \
 		printf "  $(GREEN)✔ CARLA started$(RESET) (pid=$(carla_pid), port=$(CARLA_PORT)) → log: $(CARLA_LOG_FILE)\n"; \
 	else \
@@ -107,11 +110,20 @@ carla:
 
 .PHONY: carla.stop
 carla.stop:
-	@if $(carla_running); then \
-		pkill -f "$(CARLA_PROC).*carla-rpc-port=$(CARLA_PORT)"; \
-		printf "  $(GREEN)✔ CARLA stopped$(RESET)\n"; \
-	else \
+	@BINARY=$$(ss -tlnp 2>/dev/null | grep ":$(CARLA_PORT) " | grep -oP 'pid=\K[0-9]+'); \
+	if [ -z "$$BINARY" ]; then \
 		printf "  $(YELLOW)CARLA is not running$(RESET)\n"; \
+		exit 0; \
+	fi; \
+	WRAPPER=$$(ps -o ppid= -p $$BINARY 2>/dev/null | tr -d ' '); \
+	ALL=$$(printf '%s\n%s\n' "$$BINARY" "$$WRAPPER" | grep -v '^[[:space:]]*$$' | sort -u | tr '\n' ' '); \
+	printf "  Killing PIDs: $$ALL\n"; \
+	echo $$ALL | xargs kill -9 2>/dev/null || true; \
+	sleep 1; \
+	if $(carla_running); then \
+		printf "$(YELLOW)⚠ Port $(CARLA_PORT) still active — try again$(RESET)\n"; \
+	else \
+		printf "  $(GREEN)✔ CARLA fully stopped$(RESET)\n"; \
 	fi
 
 .PHONY: carla.status
@@ -121,6 +133,7 @@ carla.status:
 	else \
 		printf "  $(YELLOW)✗ CARLA not running$(RESET)\n"; \
 	fi
+
 
 .PHONY: app
 app:
