@@ -1,109 +1,70 @@
 # `WheelSpeedReading` — Field Reference
 
-`WheelSpeedReading` is the **frozen snapshot** emitted by `WheelSpeedSensor` once
-per CARLA tick. Every field is described below: what it represents physically, how it
-is computed, and how (or whether) downstream code should consume it.
+`WheelSpeedReading` is the data structure returned by the `WheelSpeedSensor` at the end of each simulation frame. This reference explains what each field represents and how it is used in the pipeline.
 
 ---
 
 ## `speed_mps` · `float`
 
-**The v\_ego value that DEDR must consume.** Units: metres per second.
+**The speed value ($v_{\text{ego}}$) that should be passed to DEDR.** Units: meters per second.
 
-This is the final, pipeline-processed estimate of the ego vehicle's forward speed. It
-has passed through all three corruption stages in sequence:
+This is the final speed output from the sensor simulation, after applying all corruption stages:
 
-1. Gaussian noise was added to the ideal pulse frequency (see `WheelSpeedSensorConfig`
-   § Gaussian noise bands).
-2. The noisy frequency was converted back to a speed via `v = (f × C) / N`.
-3. The speed was quantised to the nearest discrete step that a real encoder can resolve
-   (see `WheelSpeedSensorConfig` § Quantization).
-4. If a scripted fault was active on this tick, the value was overwritten by the
-   fault-injection function (see `fault_active`).
+1. **Jitter:** Gaussian noise is added to the ideal pulse frequency.
+2. **Kinematic mapping:** The noisy frequency is converted to speed using `v = (f × C) / N`.
+3. **Quantization:** The speed is rounded to match the resolution of a 2.5 MHz ECU clock.
+4. **Fault Injection:** If active, the value is overridden by a scripted fault function.
 
-**Never pass `true_speed_mps` to DEDR in place of this field.** Doing so bypasses the
-entire sensor-simulation pipeline and makes the experiment scientifically invalid.
+To keep tests realistic, you must always pass this field to downstream algorithms rather than the ground-truth speed.
 
 ---
 
 ## `true_speed_mps` · `float`
 
-**CARLA's unmodified ground-truth speed. For offline analysis and plots only.** Units:
-metres per second.
+**The exact ground-truth speed from the CARLA physics simulator.** Units: meters per second.
 
-Computed as the Euclidean magnitude of the actor's velocity vector returned by
-`actor.get_velocity()`:
+This is calculated as the Euclidean norm of the simulator's velocity vector:
 
-```
-true_speed = sqrt(vx² + vy² + vz²)
-```
+$$v_{\text{true}} = \sqrt{v_x^2 + v_y^2 + v_z^2}$$
 
-This field exists so that post-run analysis scripts can compare the simulated sensor
-reading against the true trajectory, measure the noise/quantisation error distribution,
-and validate that the noise model is behaving as specified. It has **no role in the
-real-time control or DEDR pipeline** — a real ECU does not have access to ground truth.
+This field is used only for offline analysis and plotting to measure the sensor's error. It must not be used in the real-time DEDR pipeline, since a real ECU only sees the noisy sensor output.
 
 ---
 
 ## `pulse_frequency_hz` · `float`
 
-**The simulated encoder pulse frequency after Gaussian noise, before quantisation.**
-Units: Hz.
+**The simulated pulse frequency after noise is added, but before quantization.** Units: Hz.
 
-Computed as:
+It is computed as:
 
 ```
-f_ideal  = (true_speed × N) / C      # noiseless frequency
-f_observed = f_ideal + gauss(0, σ)   # with banded noise applied
+f_ideal = (v_true × N) / C
+f_observed = f_ideal + Gaussian_noise(0, σ)
 ```
 
-where `σ` is `f_ideal × noise_pct` for the applicable frequency band (see
-`WheelSpeedSensorConfig.low_freq_noise_pct` / `high_freq_noise_pct`).
-
-This intermediate value is stored primarily to support signal-chain diagnostics. It
-lets an analysis script reconstruct *where* in the pipeline a large error arose (noise
-stage vs. quantisation stage). It is **not** the same as the frequency that would
-produce `speed_mps` after quantisation — they differ because quantisation snaps
-the speed to a discrete grid after the frequency is converted back.
+We keep this field to help debug the signal chain, making it easier to see if a large speed error was caused by the random noise stage or the quantization stage.
 
 ---
 
 ## `timestamp` · `float`
 
-**CARLA simulation elapsed time at which this reading was captured.** Units: seconds.
+**The simulator time when this reading was captured.** Units: seconds.
 
-Taken directly from `snapshot.timestamp.elapsed_seconds`, the monotonic clock
-maintained by the CARLA server for the current episode. Its primary uses are:
+This is pulled from the simulator's clock and is used to:
+- Align wheel speed readings with IMU and radar data.
+- Determine if a scripted fault window is currently active.
+- Track processing latencies through the pipeline.
 
-- **Cross-sensor alignment** — correlating this reading with simultaneous IMU and radar
-  snapshots taken on the same tick.
-- **Fault-injection scheduling** — `make_slip_fault` uses this value to decide whether
-  the fault window is currently active (`start_time_s ≤ elapsed_seconds < start_time_s
-  + duration_s`).
-- **Latency accounting** — comparing the reading's timestamp against the wall-clock time
-  at which downstream code consumes it.
-
-This is *not* wall-clock time and resets to zero at the start of each CARLA episode.
-Do not compare timestamps across episodes.
+This value is relative and resets to zero at the start of each simulation run.
 
 ---
 
 ## `fault_active` · `bool`
 
-**True if and only if a scripted fault-injection function overwrote `speed_mps` on
-this tick.**
+**Indicates whether a scripted fault override was active during this frame.**
 
-When `True`, `speed_mps` reflects the fault function's return value rather than the
-noise-and-quantisation pipeline output. `pulse_frequency_hz` is still the pre-fault,
-noise-corrupted value — it is intentionally left unmodified so that analysis scripts
-can reconstruct the fault magnitude as `speed_mps − (f_observed × C / N)`.
+When this is `True`, `speed_mps` contains the overridden fault value instead of the normal speed calculation. The `pulse_frequency_hz` field is left unchanged so that analysis tools can calculate the exact fault deviation:
 
-This flag is `False` in two situations:
-
-1. `WheelSpeedSensorConfig.enable_fault_injection` is `False` (the normal operating
-   mode).
-2. The fault function returned `None` on this tick (the current time is outside the
-   scripted fault window).
-
-In test-report tables, `fault_active` is the authoritative label indicating which ticks
-belong to the slip/lockup event vs. normal operation.
+```
+Δv = speed_mps - (pulse_frequency_hz × C / N)
+```
