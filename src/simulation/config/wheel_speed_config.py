@@ -19,7 +19,9 @@ class WheelSpeedSensorConfig:
     high_freq_noise_pct: float = 0.04
 
     enable_quantization: bool = True
-    # 0.4 μs → 2.5 MHz ECU counter; see config/wheel_speed_config.md § Quantization
+
+    # 0.4 μs → 2.5 MHz ECU counter;
+    # See config/wheel_speed_config.md § Quantization
     ecu_timer_resolution_s: float = 4e-7
 
     enable_fault_injection: bool = False

@@ -16,7 +16,7 @@ A real Hall-effect wheel-speed sensor doesn't measure speed directly. Instead:
 3. The sensor detects this change and outputs a digital pulse.
 4. The ECU counts these pulses over time to calculate the speed.
 
-![Physical Wheel-Speed Sensor and Tone Ring](assets/physical_sensor_installation.png)
+![Physical Wheel-Speed Sensor and Tone Ring](../../../docs/assets/physical_sensor_installation.png)
 
 The standard formula to convert pulse frequency to speed is:
 
@@ -72,9 +72,9 @@ We based our sensor model parameters on real hardware specifications rather than
 
 Neither source is a Yamaha datasheet or service manual; both are aftermarket reproductions of the OEM ring. Yamaha does not publish tooth count for any tone ring, so "37/38 teeth" should be understood as the best available public evidence, not a confirmed OEM number. The selling seller (eBay) also has a feedback history dominated by unrelated electronics parts (TV power boards), which is a mild provenance concern worth disclosing rather than hiding.
 
-![eBay Listing by yanleb](assets/ebay_listing_yanleb.png)
-![eBay Item Description and Compatibility](assets/ebay_item_description.png)
-![Custom Tone Rings showing 37 and 38 teeth](assets/custom_tone_rings_37_38_teeth.png)
+![eBay Listing by yanleb](../../../docs/assets/ebay_listing_yanleb.png)
+![eBay Item Description and Compatibility](../../../docs/assets/ebay_item_description.png)
+![Custom Tone Rings showing 37 and 38 teeth](../../../docs/assets/custom_tone_rings_37_38_teeth.png)
 
 ### 2.0 Why the Bosch HA-M? Sensor Selection Justification
 
