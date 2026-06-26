@@ -109,15 +109,51 @@ noise model, which is the safer direction for a safety system evaluation.
 
 ### `enable_quantization` · `bool` · default `True`
 
-Whether to snap the estimated speed to the nearest discrete step that a real encoder
-can resolve.
+Master switch for the ECU inter-pulse timing quantization stage. Set to `False` only
+in ablation experiments designed to isolate the quantization contribution to DEDR error.
 
-A Hall-effect encoder is inherently discrete — it cannot resolve speed finer than the
-distance travelled between two successive tooth edges within one sampling interval. The
-step size is `(C / N) / dt`, where `dt` is the tick duration. Setting this to `False`
-removes a real physical limitation and makes the sensor unrealistically precise; it
-should only be `False` in controlled ablation experiments designed to isolate the
-quantisation contribution to DEDR error.
+When `True`, the sensor models speed resolution the way a real Bosch ABS ECU does:
+rather than snapping speed to a grid defined by the CARLA tick interval, it computes
+the ideal time between successive tooth edges at the noisy speed, quantizes *that
+interval* to the nearest multiple of `ecu_timer_resolution_s`, then back-converts to
+speed. This removes the 1.62 m/s artifact that results from using the 30 Hz tick period
+directly and produces a resolution of ~0.001 m/s at cruise speed — consistent with
+real hardware.
+
+---
+
+### `ecu_timer_resolution_s` · `float` · default `4e-7` (0.4 μs)
+
+The timer tick period of the simulated ABS ECU, in seconds.
+
+**Physical basis:** A 2.5 MHz free-running counter (period = 0.4 μs) is representative
+of the Bosch ABS 5.x / ABS 8 ECU generation. The ECU latches this counter on each
+tooth-edge interrupt and computes the inter-pulse interval as the difference between
+consecutive latch values. This is the standard ABS wheel-speed measurement architecture
+described in Bosch Automotive Handbook (9th ed.) and is independent of the vehicle CAN
+bus rate or any simulation tick rate.
+
+**Effect on speed resolution:** Speed resolution from timer quantization alone is:
+
+```
+Δv ≈ (C / N) × (ecu_timer_resolution_s / inter_pulse_time²)
+   = v² × ecu_timer_resolution_s × N / C
+```
+
+At 13.7 m/s (N=37, C=1.98 m, inter_pulse ≈ 3.9 ms):
+
+```
+Δv ≈ (1.98/37) × (4e-7 / (3.9e-3)²)  ≈  0.0014 m/s
+```
+
+This is ~1,160× finer than the previous tick-rate model (1.62 m/s at 30 Hz), and is
+consistent with the sub-0.1 m/s resolution reported in published ABS ECU evaluations.
+
+**Honest limitation:** The improvement applies at steady speed. Between CARLA ticks the
+vehicle speed is assumed constant; intra-tick acceleration events are invisible
+regardless of `ecu_timer_resolution_s`. At 30 Hz this limits effective acceleration
+observability to changes occurring over ≥ 33 ms — a real ECU has no such constraint
+because it operates asynchronously from the vehicle CAN bus.
 
 ---
 

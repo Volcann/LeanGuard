@@ -57,10 +57,12 @@ class WheelSpeedSensor:
         true_speed_mps = math.sqrt(velocity.x**2 + velocity.y**2 + velocity.z**2)
         tooth_count = self._config.num_teeth
         circumference_m = self._config.wheel_circumference_m
+        distance_per_tooth_m = circumference_m / tooth_count if tooth_count > 0 else 0.0
 
+        # Stage 1 — ideal pulse frequency; see wheel_speed.md § 1
         ideal_pulse_freq_hz = (
-            (true_speed_mps * tooth_count) / circumference_m
-            if circumference_m > 0
+            true_speed_mps / distance_per_tooth_m
+            if distance_per_tooth_m > 0
             else 0.0
         )
 
@@ -78,18 +80,27 @@ class WheelSpeedSensor:
         )
         noisy_pulse_freq_hz = max(noisy_pulse_freq_hz, 0.0)
 
-        estimated_speed_mps = (
-            (noisy_pulse_freq_hz * circumference_m) / tooth_count
-            if tooth_count > 0
-            else 0.0
-        )
+        # Stage 3 — convert noisy frequency back to speed
+        noisy_speed_mps = noisy_pulse_freq_hz * distance_per_tooth_m
 
-        # Quantisation — see config/wheel_speed_config.md § Quantization
-        if self._config.enable_quantization and tooth_count > 0 and circumference_m > 0:
-            tick_duration_s = snapshot.timestamp.delta_seconds or (1.0 / 20.0)
-            speed_resolution_step = (circumference_m / tooth_count) / tick_duration_s if tick_duration_s > 0 else 0.0
-            if speed_resolution_step > 0:
-                estimated_speed_mps = round(estimated_speed_mps / speed_resolution_step) * speed_resolution_step
+        # Stage 4 — ECU inter-pulse timing quantization
+        # see config/wheel_speed_config.md § Quantization
+        estimated_speed_mps = noisy_speed_mps
+        if (
+            self._config.enable_quantization
+            and noisy_speed_mps > 0
+            and distance_per_tooth_m > 0
+        ):
+            ideal_inter_pulse_s = distance_per_tooth_m / noisy_speed_mps
+            timer_res = self._config.ecu_timer_resolution_s
+            if timer_res > 0:
+                quantized_inter_pulse_s = (
+                    round(ideal_inter_pulse_s / timer_res) * timer_res
+                )
+                if quantized_inter_pulse_s > 0:
+                    estimated_speed_mps = (
+                        distance_per_tooth_m / quantized_inter_pulse_s
+                    )
 
         fault_active = False
         if self._config.enable_fault_injection and self._config.fault_injection_fn:
