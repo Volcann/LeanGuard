@@ -1,0 +1,1 @@
+"""Simulation sensor configuration dataclasses."""
