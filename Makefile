@@ -8,8 +8,8 @@ success        := ✔ done
 export
 
 CARLA_ROOT     ?= /opt/carla-simulator
-APP_MODULE     ?= leanguard
-PYGAME_MODULE  ?= leanguard.viewer
+APP_MODULE     ?= simulation
+PYGAME_MODULE  ?= simulation.viewer
 CACHE_DIRS     := __pycache__ .mypy_cache .ruff_cache .pytest_cache htmlcov dist
 
 BOLD   := \033[1m
@@ -36,7 +36,7 @@ help:
 	@printf "    $(BOLD)carla.status$(RESET) Show CARLA server status\n"
 	@echo ""
 	@printf "  $(GREEN)Application$(RESET)\n"
-	@printf "    $(BOLD)app$(RESET)          Run LeanGuard (python -m leanguard)\n"
+	@printf "    $(BOLD)app$(RESET)          Run LeanGuard (python -m simulation)\n"
 	@printf "    $(BOLD)pygame$(RESET)       Run Pygame CARLA client via python -m\n"
 	@printf "    $(BOLD)build$(RESET)        Build wheel and sdist into dist/\n"
 	@echo ""
