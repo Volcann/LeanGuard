@@ -22,6 +22,8 @@ clean digital pulse. The sensor itself never calculates anything — it is a pul
 generator. The ECU (or, in our case, the simulation pipeline standing in for one) is
 what counts pulses over time and converts that into a speed value.
 
+![Physical Wheel-Speed Sensor and Tone Ring](assets/physical_sensor_installation.png)
+
 The standard relationship, consistent across automotive literature and independently
 confirmed by a peer-reviewed wheel-speed-sensor retrofit study on a two-wheeled vehicle
 (a 50cc scooter), is:
@@ -96,6 +98,10 @@ What this evidence does and does not establish:
    evidence**, not a confirmed OEM number. The selling seller (eBay) also has a
    feedback history dominated by unrelated electronics parts (TV power boards), which
    is a mild provenance concern worth disclosing rather than hiding.
+
+   ![eBay Listing by yanleb](assets/ebay_listing_yanleb.png)
+   ![eBay Item Description and Compatibility](assets/ebay_item_description.png)
+   ![Custom Tone Rings showing 37 and 38 teeth](assets/custom_tone_rings_37_38_teeth.png)
 3. **The Bosch automotive accuracy figures remain useful for the noise-magnitude
    discussion** (Section 3 below), but, as before, must never be used to justify a
    tooth count — that was the original mistake in an earlier draft of this document,

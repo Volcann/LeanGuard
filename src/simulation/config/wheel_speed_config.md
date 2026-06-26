@@ -18,7 +18,10 @@ Number of teeth on the ABS tone ring fitted to the modelled motorcycle's front w
 (eBay seller *yanleb*, and Ten Kate Racing Products — a Yamaha WorldSSP parts supplier)
 both reference OEM interchange part number `1SD-2517G-00-00` / `1SD2517G0000` and
 describe fitment to the Yamaha YZF-R1 (2015+) and YZF-R6 (2017+) front wheel. Physical
-photographs in the first listing show a ring with 37 teeth.
+photographs in the first listing show a ring with 37 teeth (see listing evidence below).
+
+![Custom Tone Rings (37 and 38 teeth)](../sensors/assets/custom_tone_rings_37_38_teeth.png)
+![eBay Listing details](../sensors/assets/ebay_item_description.png)
 
 **Confidence level:** Best-available public evidence, *not* a Yamaha factory
 specification. Yamaha does not publish tone-ring tooth counts. The seller whose photos
