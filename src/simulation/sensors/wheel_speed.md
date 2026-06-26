@@ -61,7 +61,7 @@ We based our sensor model parameters on real hardware specifications rather than
 
 | Source | Sensor / Context | Details |
 |---|---|---|
-| Bosch Motorsport HA-D 90 / HA-M datasheets | Automotive Hall-effect speed sensors | Lists edge-detection accuracy as `< 1.0–1.5%` (HA-D 90) and `< 4%` (HA-M), depending on the frequency. We use these ranges to calibrate our noise. |
+| Bosch Motorsport HA-D 90 datasheet [2] / HA-M datasheet [1] | Automotive Hall-effect speed sensors | Lists edge-detection accuracy as `< 1.0–1.5%` (HA-D 90) and `< 4%` (HA-M), depending on the frequency. We use these ranges to calibrate our noise. |
 | Aftermarket tone ring listings (MT-09/YZF-R1) | Motorcycle replacement parts | Physical photos of reproduction rings show configurations with 37 and 38 teeth (suggesting front/rear or model year differences). |
 | Ten Kate Racing Products (Yamaha parts supplier) | YZF-R1 / YZF-R6 front wheel rotor | Confirms fitment of the 37-tooth design for R1 (2015+) and R6 (2017+) models. |
 
@@ -221,3 +221,4 @@ It is important to distinguish between **speed estimation resolution** (which we
 ## 7. References
 
 * **[1]** Bosch Engineering GmbH (2026). *Speed Sensor Hall-Effect HA-M Technical Specifications* (Doc ID: 53202827 | en, 1, 27. Jan 2026). Abstatt, Germany: Bosch Motorsport. Available: [Bosch Motorsport HA-M Speed Sensor PDF](https://www.bosch-motorsport.com/content/downloads/Raceparts/Resources/pdf/Data%20Sheet_69827851_Speed_Sensor_Hall-Effect_HA-M.pdf)
+* **[2]** Bosch Engineering GmbH. *Speed Sensor Hall-Effect HA-D 90 Technical Specifications* (Doc ID: 69813003). Abstatt, Germany: Bosch Motorsport. Available: [Bosch Motorsport HA-D 90 Speed Sensor PDF](https://www.bosch-motorsport.com/content/downloads/Raceparts/Resources/pdf/Data%20Sheet_69813003_Speed_Sensor_Hall-Effect_HA-D_90.pdf)
