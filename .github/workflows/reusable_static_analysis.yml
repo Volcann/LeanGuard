@@ -26,7 +26,7 @@ jobs:
             mypy-${{ runner.os }}-
 
       - name: Install Dependencies
-        run: uv sync --all-groups
+        run: uv sync --extra dev
 
       - name: Run Mypy
         run: uv run mypy src

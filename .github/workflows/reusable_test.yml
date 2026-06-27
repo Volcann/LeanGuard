@@ -24,7 +24,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install Dependencies
-        run: uv sync --all-groups
+        run: uv sync --extra dev
 
       - name: Run Tests with Coverage
         run: |
