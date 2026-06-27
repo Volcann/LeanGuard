@@ -14,33 +14,6 @@ logger = logging.getLogger(__name__)
 
 
 class RearRadar:
-    """Wraps a single CARLA radar sensor mounted at the rear-centre of the ego vehicle.
-
-    Models a Texas Instruments AWR1642 77 GHz FMCW single-chip radar
-    (datasheet: TI SWRS203D), the primary target hardware for LeanGuard's
-    blind-spot detection system.
-
-    Architecture — single centre-rear radar:
-    ::
-
-               [REAR RADAR — centre mount]
-                          |
-                azimuth < 0  →  RadarSide.LEFT
-                azimuth > 0  →  RadarSide.RIGHT
-
-    Left/right discrimination is derived from the sign of the FMCW azimuth
-    angle rather than from which physical sensor fired.  This matches the
-    Chigee SR-1 commercial baseline and is valid because the AWR1642's 4RX
-    array provides sufficient angular resolution for side separation.
-
-    See docs/design.md for the full hardware justification and pipeline
-    description.
-
-    Thread safety:
-        ``_on_radar_measurement`` runs on CARLA's internal sensor thread.
-        ``tick()`` and ``destroy()`` are called from the simulation loop thread.
-        All shared state is protected by ``_lock``.
-    """
 
     def __init__(
         self,
@@ -48,21 +21,12 @@ class RearRadar:
         parent_actor: carla.Actor,
         config: RearRadarConfig | None = None,
     ) -> None:
-        """Spawn and attach the centre-rear radar to *parent_actor*.
-
-        Args:
-            world: Active CARLA World instance.
-            parent_actor: Ego vehicle actor to attach the sensor to.
-            config: Optional config override; defaults to ``RearRadarConfig()``.
-        """
         self._lock = threading.Lock()
         self._detections: list[RadarDetection] = []
         self._config = config or RearRadarConfig()
         self._sensor: carla.Actor | None = None
 
-        # ------------------------------------------------------------------ #
-        # Blueprint — calibrated to TI AWR1642 (SWRS203D)                   #
-        # ------------------------------------------------------------------ #
+        # Blueprint — calibrated to TI AWR1642; see docs/design.md § 4
         bp_library = world.get_blueprint_library()
         radar_bp = bp_library.find("sensor.other.radar")
 
@@ -72,9 +36,7 @@ class RearRadar:
         radar_bp.set_attribute("range", str(self._config.range_m))
         radar_bp.set_attribute("points_per_second", str(self._config.points_per_second))
 
-        # ------------------------------------------------------------------ #
-        # Mount — centre rear; see docs/config.md § Mount Point              #
-        # ------------------------------------------------------------------ #
+        # Mount — centre rear; see docs/config.md § Mount Point
         loc = carla.Location(
             x=self._config.mount_x_m,
             y=self._config.mount_y_m,
@@ -100,21 +62,8 @@ class RearRadar:
 
         self._sensor.listen(self._on_radar_measurement)
 
-    # ---------------------------------------------------------------------- #
-    # Internal callback (runs on CARLA sensor thread)                        #
-    # ---------------------------------------------------------------------- #
-
     def _on_radar_measurement(self, measurement: carla.RadarMeasurement) -> None:
-        """Parse a raw CARLA RadarMeasurement into :class:`RadarDetection` objects.
-
-        Implements the azimuth-sign left/right discrimination described in
-        docs/design.md § 3.  Detections accumulate in ``_detections`` until
-        drained by :meth:`tick`.
-
-        Buffer overflow guard: if the consumer has not called ``tick()`` and
-        the buffer is full, the entire frame is dropped with a warning rather
-        than silently growing memory without bound.
-        """
+        # Buffer overflow guard — see docs/design.md § 5
         frame = measurement.frame
         with self._lock:
             if len(self._detections) >= self._config.max_buffer_detections:
@@ -141,31 +90,13 @@ class RearRadar:
                     )
                 )
 
-    # ---------------------------------------------------------------------- #
-    # Public API                                                              #
-    # ---------------------------------------------------------------------- #
-
     def tick(self) -> list[RadarDetection]:
-        """Return all detections accumulated since the last call and clear the buffer.
-
-        Implements the clear-on-read pattern used by the sibling
-        ``WheelSpeedSensor`` and ``ImuSensor`` classes.
-
-        Returns:
-            Snapshot of all :class:`RadarDetection` objects since the previous
-            ``tick()``.  May be empty if no measurement frames arrived yet.
-        """
         with self._lock:
             detections = self._detections
             self._detections = []
             return detections
 
     def destroy(self) -> None:
-        """Stop the CARLA sensor and release all resources.
-
-        Safe to call multiple times; subsequent calls are no-ops.
-        Mirrors the ``destroy()`` contract of ``ImuSensor``.
-        """
         with self._lock:
             if self._sensor is not None:
                 try:

@@ -5,7 +5,7 @@ from simulation.sensors.wheel_speed.reading import WheelSpeedReading
 from simulation.sensors.wheel_speed.sensor import WheelSpeedSensor
 
 __all__ = [
+    "WheelSpeedReading",
     "WheelSpeedSensor",
     "WheelSpeedSensorConfig",
-    "WheelSpeedReading",
 ]

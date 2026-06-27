@@ -5,8 +5,8 @@ from simulation.sensors.radar.reading import RadarDetection, RadarSide
 from simulation.sensors.radar.sensor import RearRadar
 
 __all__ = [
-    "RearRadar",
-    "RearRadarConfig",
     "RadarDetection",
     "RadarSide",
+    "RearRadar",
+    "RearRadarConfig",
 ]
