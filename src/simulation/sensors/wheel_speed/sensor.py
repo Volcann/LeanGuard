@@ -1,4 +1,4 @@
-"""Simulated Hall-effect wheel-speed sensor. See sensors/wheel_speed.md."""
+"""Simulated Hall-effect wheel-speed sensor. See docs/design.md."""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ import threading
 
 import carla
 
-from simulation.config.wheel_speed_config import FaultInjectionFn, WheelSpeedSensorConfig
-from simulation.config.wheel_speed_reading import WheelSpeedReading
+from simulation.sensors.wheel_speed.config import FaultInjectionFn, WheelSpeedSensorConfig
+from simulation.sensors.wheel_speed.reading import WheelSpeedReading
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +47,7 @@ class WheelSpeedSensor:
         self._callback_id: int | None = self._world.on_tick(self._on_world_tick)
 
     def _on_world_tick(self, snapshot: carla.WorldSnapshot) -> None:
-        # 5-stage pipeline — see wheel_speed.md § 1
+        # 5-stage pipeline — see docs/design.md § 1
         try:
             velocity = self._parent_actor.get_velocity()
         except RuntimeError as e:
@@ -59,14 +59,14 @@ class WheelSpeedSensor:
         circumference_m = self._config.wheel_circumference_m
         distance_per_tooth_m = circumference_m / tooth_count if tooth_count > 0 else 0.0
 
-        # Stage 1 — ideal pulse frequency; see wheel_speed.md § 1
+        # Stage 1 — ideal pulse frequency; see docs/design.md § 1
         ideal_pulse_freq_hz = (
             true_speed_mps / distance_per_tooth_m
             if distance_per_tooth_m > 0
             else 0.0
         )
 
-        # Banded noise — see config/wheel_speed_config.md § Noise Model
+        # Banded noise — see docs/config.md § Noise Model
         noise_fraction = (
             self._config.low_freq_noise_pct
             if ideal_pulse_freq_hz <= self._config.low_freq_threshold_hz
@@ -84,7 +84,7 @@ class WheelSpeedSensor:
         noisy_speed_mps = noisy_pulse_freq_hz * distance_per_tooth_m
 
         # Stage 4 — ECU inter-pulse timing quantization
-        # see config/wheel_speed_config.md § Quantization
+        # see docs/config.md § Quantization
         estimated_speed_mps = noisy_speed_mps
         if (
             self._config.enable_quantization
@@ -143,7 +143,7 @@ def make_slip_fault(
     duration_s: float,
     slip_factor: float,
 ) -> FaultInjectionFn:
-    # See config/wheel_speed_config.md § Fault Injection
+    # See docs/config.md § Fault Injection
     def _fault(true_speed_mps: float, elapsed_seconds: float) -> float | None:
         if start_time_s <= elapsed_seconds < start_time_s + duration_s:
             return max(true_speed_mps * slip_factor, 0.0)

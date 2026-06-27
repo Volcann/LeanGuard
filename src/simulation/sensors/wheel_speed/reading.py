@@ -1,4 +1,4 @@
-"""Sensor output snapshot. See config/wheel_speed_reading.md for all field details."""
+"""Sensor output snapshot. See docs/reading.md for all field details."""
 
 from __future__ import annotations
 

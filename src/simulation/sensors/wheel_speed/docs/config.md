@@ -1,6 +1,6 @@
 # `WheelSpeedSensorConfig` — Field Reference
 
-`WheelSpeedSensorConfig` controls all tunable parameters of the simulated Hall-effect wheel-speed sensor. The default values are chosen to match a Bosch-equipped KTM (e.g., KTM 1290 Super Duke / Adventure) or Ducati (e.g., Panigale / Multistrada) class motorcycle. If you change these parameters, make sure to update `wheel_speed.md` to keep the documentation consistent.
+`WheelSpeedSensorConfig` controls all tunable parameters of the simulated Hall-effect wheel-speed sensor. The default values are chosen to match a Bosch-equipped KTM (e.g., KTM 1290 Super Duke / Adventure) or Ducati (e.g., Panigale / Multistrada) class motorcycle. If you change these parameters, make sure to update `design.md` to keep the documentation consistent.
 
 ---
 
