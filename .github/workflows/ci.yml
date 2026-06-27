@@ -1,0 +1,41 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+    branches:
+      - "**"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: 1. Lint Check
+    uses: ./.github/workflows/reusable_lint.yml
+
+  static-analysis:
+    name: 2. Static Analysis
+    needs: lint
+    uses: ./.github/workflows/reusable_static_analysis.yml
+
+  security:
+    name: 3. Security Scanning
+    needs: lint
+    uses: ./.github/workflows/reusable_security.yml
+
+  test:
+    name: 4. Testing & Coverage
+    needs: lint
+    uses: ./.github/workflows/reusable_test.yml
+    with:
+      coverage_threshold: 40
+
+  build:
+    name: 5. Package Build Verification
+    needs: [static-analysis, security, test]
+    uses: ./.github/workflows/reusable_build.yml

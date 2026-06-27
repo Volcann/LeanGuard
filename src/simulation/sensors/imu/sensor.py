@@ -23,15 +23,6 @@ def _quantize(value: float, step: float) -> float:
 
 
 class ImuSensor:
-    """Wraps a CARLA IMU sensor and exposes an MM5.10-modeled reading.
-
-    Processing pipeline per axis — see docs/design.md § 4:
-      1. Unit conversion   (CARLA → datasheet units)
-      2. Optional noise    (only when gyro_noise_std_dps / accel_noise_std_g is set)
-      3. Optional low-pass filter  (first-order IIR, selectable cutoff)
-      4. Optional over-range fault flagging
-      5. Optional quantization     (digit-step from datasheet CAN encoding table)
-    """
 
     def __init__(
         self,
@@ -96,24 +87,26 @@ class ImuSensor:
             roll_deg_ground_truth = 0.0
 
         timestamp = measurement.timestamp
-        dt_s = (
-            0.0
-            if self._last_timestamp is None
-            else max(timestamp - self._last_timestamp, 0.0)
-        )
+        dt_s = 0.0 if self._last_timestamp is None else max(timestamp - self._last_timestamp, 0.0)
         self._last_timestamp = timestamp
 
         # Stage 1 — unit conversion; see docs/design.md § 4.1
-        gyro_raw_dps = tuple(math.degrees(v) for v in (
-            measurement.gyroscope.x,
-            measurement.gyroscope.y,
-            measurement.gyroscope.z,
-        ))
-        accel_raw_g = tuple(v / 9.81 for v in (
-            measurement.accelerometer.x,
-            measurement.accelerometer.y,
-            measurement.accelerometer.z,
-        ))
+        gyro_raw_dps = tuple(
+            math.degrees(v)
+            for v in (
+                measurement.gyroscope.x,
+                measurement.gyroscope.y,
+                measurement.gyroscope.z,
+            )
+        )
+        accel_raw_g = tuple(
+            v / 9.81
+            for v in (
+                measurement.accelerometer.x,
+                measurement.accelerometer.y,
+                measurement.accelerometer.z,
+            )
+        )
 
         gyro_out: list[float] = []
         for val, filt in zip(gyro_raw_dps, self._gyro_filters, strict=False):
@@ -131,10 +124,14 @@ class ImuSensor:
 
         accel_out: list[float] = []
         for val, filt in zip(accel_raw_g, self._accel_filters, strict=False):
+            # Stage 2 — noise; see docs/design.md § 4.2
             val = self._apply_noise(val, self._config.accel_noise_std_g)
+            # Stage 3 — low-pass filter; see docs/design.md § 4.3
             if self._config.enable_lowpass_filter:
                 val = filt.apply(val, dt_s)
+            # Stage 4 — over-range fault; see docs/design.md § 4.4
             val, _ = self._apply_range_fault(val, self._config.accel_over_range_limit_g)
+            # Stage 5 — quantization; see docs/design.md § 4.5
             if self._config.enable_quantization:
                 val = _quantize(val, self._config.accel_quantization_g_per_digit)
             accel_out.append(val)

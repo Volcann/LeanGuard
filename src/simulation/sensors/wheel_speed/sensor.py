@@ -61,9 +61,7 @@ class WheelSpeedSensor:
 
         # Stage 1 — ideal pulse frequency; see docs/design.md § 1
         ideal_pulse_freq_hz = (
-            true_speed_mps / distance_per_tooth_m
-            if distance_per_tooth_m > 0
-            else 0.0
+            true_speed_mps / distance_per_tooth_m if distance_per_tooth_m > 0 else 0.0
         )
 
         # Banded noise — see docs/config.md § Noise Model
@@ -86,21 +84,13 @@ class WheelSpeedSensor:
         # Stage 4 — ECU inter-pulse timing quantization
         # see docs/config.md § Quantization
         estimated_speed_mps = noisy_speed_mps
-        if (
-            self._config.enable_quantization
-            and noisy_speed_mps > 0
-            and distance_per_tooth_m > 0
-        ):
+        if self._config.enable_quantization and noisy_speed_mps > 0 and distance_per_tooth_m > 0:
             ideal_inter_pulse_s = distance_per_tooth_m / noisy_speed_mps
             timer_res = self._config.ecu_timer_resolution_s
             if timer_res > 0:
-                quantized_inter_pulse_s = (
-                    round(ideal_inter_pulse_s / timer_res) * timer_res
-                )
+                quantized_inter_pulse_s = round(ideal_inter_pulse_s / timer_res) * timer_res
                 if quantized_inter_pulse_s > 0:
-                    estimated_speed_mps = (
-                        distance_per_tooth_m / quantized_inter_pulse_s
-                    )
+                    estimated_speed_mps = distance_per_tooth_m / quantized_inter_pulse_s
 
         estimated_speed_mps = max(estimated_speed_mps, 0.0)
 

@@ -87,6 +87,7 @@ warn_return_any = true
 warn_unused_configs = true
 ignore_missing_imports = false
 mypy_path = "src"
+explicit_package_bases = true
 
 [[tool.mypy.overrides]]
 module = "carla"

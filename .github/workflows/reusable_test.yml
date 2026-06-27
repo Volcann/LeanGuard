@@ -1,0 +1,79 @@
+name: Reusable Tests
+
+on:
+  workflow_call:
+    inputs:
+      coverage_threshold:
+        type: number
+        required: false
+        default: 80
+        description: "Minimum test coverage percentage required"
+
+jobs:
+  test:
+    name: Pytest & Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version: "3.12"
+
+      - name: Install Dependencies
+        run: uv sync --extra dev
+
+      - name: Run Tests with Coverage
+        run: |
+          uv run pytest --cov=src --cov-report=term-missing --cov-fail-under=${{ inputs.coverage_threshold }} --junitxml=junit.xml
+
+      - name: Generate Test Summary
+        if: always()
+        shell: python
+        run: |
+          import xml.etree.ElementTree as ET
+          import os
+
+          if not os.path.exists('junit.xml'):
+              print("No junit.xml report found.")
+              exit(0)
+
+          tree = ET.parse('junit.xml')
+          root = tree.getroot()
+          # Handle root being <testsuites> or <testsuite>
+          testsuite = root if root.tag == 'testsuite' else root.find('testsuite')
+
+          if testsuite is not None:
+              tests = int(testsuite.get('tests', 0))
+              failures = int(testsuite.get('failures', 0))
+              errors = int(testsuite.get('errors', 0))
+              skipped = int(testsuite.get('skipped', 0))
+              time = float(testsuite.get('time', 0.0))
+              passed = tests - failures - errors - skipped
+
+              summary = f"""### 📊 Test Execution Summary
+          | Status | Count |
+          | :--- | :--- |
+          | ✅ Passed | **{passed}** |
+          | ❌ Failed | **{failures}** |
+          | 🚨 Errors | **{errors}** |
+          | ⏭️ Skipped | **{skipped}** |
+
+          **Total Tests:** {tests} | **Duration:** {time:.2f}s
+          """
+              with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
+                  f.write(summary)
+          else:
+              print("No testsuite found in XML.")
+
+      - name: Upload Test Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            junit.xml
+            .coverage
