@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from collections.abc import Callable
+from dataclasses import dataclass, field
 
 FaultInjectionFn = Callable[[float, float], float | None]
 
 
 @dataclass
 class WheelSpeedSensorConfig:
-    num_teeth: int = 37
+    num_teeth: int = 48
     wheel_circumference_m: float = 1.98
-    num_teeth_sweep_values: tuple[int, ...] = field(default_factory=lambda: (36, 37, 38, 40))
+    num_teeth_sweep_values: tuple[int, ...] = field(default_factory=lambda: (40, 44, 48, 50))
 
     low_freq_threshold_hz: float = 200.0
     low_freq_noise_pct: float = 0.01

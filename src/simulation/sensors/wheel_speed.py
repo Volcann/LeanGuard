@@ -28,7 +28,7 @@ class WheelSpeedSensor:
         self._parent_actor = parent_actor
         self._config = config or WheelSpeedSensorConfig()
 
-        self._rng = random.Random(self._config.rng_seed)
+        self._rng = random.Random(self._config.rng_seed)  # noqa: S311
         self._reading = WheelSpeedReading(
             speed_mps=0.0,
             true_speed_mps=0.0,
