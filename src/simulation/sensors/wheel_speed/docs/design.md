@@ -16,7 +16,7 @@ A real Hall-effect wheel-speed sensor doesn't measure speed directly. Instead:
 3. The sensor detects this change and outputs a digital pulse.
 4. The ECU counts these pulses over time to calculate the speed.
 
-![Physical Wheel-Speed Sensor and Tone Ring](../../../docs/assets/physical_sensor_installation.png)
+![Physical Wheel-Speed Sensor and Tone Ring](../../../../../docs/assets/physical_sensor_installation.png)
 
 The standard formula to convert pulse frequency to speed is:
 
