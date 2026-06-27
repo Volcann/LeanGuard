@@ -13,7 +13,6 @@ This is the final speed output from the sensor simulation, after applying all co
 1. **Jitter:** Gaussian noise is added to the ideal pulse frequency.
 2. **Kinematic mapping:** The noisy frequency is converted to speed using `v = (f × C) / N`.
 3. **Quantization:** The speed is rounded to match the resolution of a 2.5 MHz ECU clock.
-4. **Fault Injection:** If active, the value is overridden by a scripted fault function.
 
 To keep tests realistic, you must always pass this field to downstream algorithms rather than the ground-truth speed.
 
@@ -52,19 +51,6 @@ We keep this field to help debug the signal chain, making it easier to see if a 
 
 This is pulled from the simulator's clock and is used to:
 - Align wheel speed readings with IMU and radar data.
-- Determine if a scripted fault window is currently active.
 - Track processing latencies through the pipeline.
 
 This value is relative and resets to zero at the start of each simulation run.
-
----
-
-## `fault_active` · `bool`
-
-**Indicates whether a scripted fault override was active during this frame.**
-
-When this is `True`, `speed_mps` contains the overridden fault value instead of the normal speed calculation. The `pulse_frequency_hz` field is left unchanged so that analysis tools can calculate the exact fault deviation:
-
-```
-Δv = speed_mps - (pulse_frequency_hz × C / N)
-```

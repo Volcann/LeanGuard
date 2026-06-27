@@ -9,7 +9,9 @@ import threading
 
 import carla
 
-from simulation.sensors.wheel_speed.config import FaultInjectionFn, WheelSpeedSensorConfig
+from simulation.sensors.wheel_speed.config import (
+    WheelSpeedSensorConfig,
+)
 from simulation.sensors.wheel_speed.reading import WheelSpeedReading
 
 logger = logging.getLogger(__name__)
@@ -34,15 +36,13 @@ class WheelSpeedSensor:
             true_speed_mps=0.0,
             pulse_frequency_hz=0.0,
             timestamp=0.0,
-            fault_active=False,
         )
 
         logger.info(
-            "Wheel-speed sensor init (N=%d, C=%.3f m, quantize=%s, fault=%s)",
+            "Wheel-speed sensor init (N=%d, C=%.3f m, quantize=%s)",
             self._config.num_teeth,
             self._config.wheel_circumference_m,
             self._config.enable_quantization,
-            self._config.enable_fault_injection,
         )
         self._callback_id: int | None = self._world.on_tick(self._on_world_tick)
 
@@ -102,15 +102,6 @@ class WheelSpeedSensor:
                         distance_per_tooth_m / quantized_inter_pulse_s
                     )
 
-        fault_active = False
-        if self._config.enable_fault_injection and self._config.fault_injection_fn:
-            injected_speed = self._config.fault_injection_fn(
-                true_speed_mps, snapshot.timestamp.elapsed_seconds
-            )
-            if injected_speed is not None:
-                estimated_speed_mps = injected_speed
-                fault_active = True
-
         estimated_speed_mps = max(estimated_speed_mps, 0.0)
 
         with self._lock:
@@ -119,7 +110,6 @@ class WheelSpeedSensor:
                 true_speed_mps=true_speed_mps,
                 pulse_frequency_hz=noisy_pulse_freq_hz,
                 timestamp=snapshot.timestamp.elapsed_seconds,
-                fault_active=fault_active,
             )
 
     @property
@@ -136,17 +126,3 @@ class WheelSpeedSensor:
                     logger.debug("Failed to remove on_tick callback: %s", e)
                 self._callback_id = None
         logger.info("Wheel-speed sensor destroyed.")
-
-
-def make_slip_fault(
-    start_time_s: float,
-    duration_s: float,
-    slip_factor: float,
-) -> FaultInjectionFn:
-    # See docs/config.md § Fault Injection
-    def _fault(true_speed_mps: float, elapsed_seconds: float) -> float | None:
-        if start_time_s <= elapsed_seconds < start_time_s + duration_s:
-            return max(true_speed_mps * slip_factor, 0.0)
-        return None
-
-    return _fault

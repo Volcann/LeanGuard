@@ -96,24 +96,6 @@ At 13.7 m/s, this yields a resolution of 0.0018 m/s. This is about 900 times fin
 
 ---
 
-## § Fault Injection
-
-### `enable_fault_injection` · `bool` · default `False`
-
-Enables the scripted slip/lockup fault injection.
-
-We model tire slip as a distinct fault rather than background noise because it represents a physical traction loss, not a sensor error. This lets us clearly mark fault windows during testing.
-
----
-
-### `fault_injection_fn` · `Optional[FaultInjectionFn]` · default `None`
-
-The custom function used to override the reported speed. 
-
-It takes the true speed and the elapsed simulation time, and returns a modified speed float or `None` (which leaves the normal speed calculation unchanged). You can use `make_slip_fault` to simulate acceleration wheel spin (`slip_factor > 1.0`) or braking lockups (`slip_factor < 1.0`).
-
----
-
 ## § Reproducibility
 
 ### `rng_seed` · `Optional[int]` · default `None`

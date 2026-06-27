@@ -112,15 +112,14 @@ The Bosch HA-M technical specification [1] provides three main justifications fo
 
 ## 3. What This Means for Our Noise Model
 
-We break down the sensor errors into three areas rather than just using a flat noise term:
+We break down the sensor errors into two key areas rather than just using a flat noise term:
 
 | Error Source | Real-world cause | How we model it |
 |---|---|---|
 | Measurement noise | Electrical or magnetic noise | Gaussian noise, scaled by frequency bands based on the Bosch datasheet (tighter at lower speeds, wider at high speeds). |
 | Quantization | ECU timer resolution | The ideal time between pulses is quantized to the nearest 0.4 μs (representing a 2.5 MHz ECU clock). Speed is then recalculated from this time. |
-| Slip / lockup events | Tire losing traction | Scripted fault injection (e.g., locking the wheel under hard braking) rather than continuous random noise. |
 
-This gives us a more realistic simulation of how the sensor behaves during both normal riding and emergency events.
+This gives us a more realistic simulation of how the sensor behaves during normal riding.
 
 > [!NOTE]
 > The measurement noise model uses a frequency-banded approach drawing from two Bosch datasheets to define the tighter-to-wider noise envelope: the HA-D 90 [2] (< 1% repeatability error) for lower speed/frequency ranges, and the HA-M [1] (< 4% repeatability error) for higher frequency ranges. Together, they form our simulated noise model.
@@ -129,7 +128,7 @@ This gives us a more realistic simulation of how the sensor behaves during both 
 
 ## 4. Summary Statement (For the Thesis Methodology Section)
 
-> "The simulated wheel-speed sensor calculates speed using $v = \frac{f \times C}{N}$. Noise parameters are based on Bosch HA-D 90 and HA-M datasheet specifications, using a frequency-banded Gaussian model. The tone ring is modeled with $N = 48$ teeth, corresponding to the standardized Bosch ABS tone rings utilized in modern KTM and Ducati models (e.g., KTM 1290 Super Duke / Adventure and Ducati Panigale/Multistrada). The model includes continuous noise (Gaussian jitter and 2.5 MHz timer quantization) along with scripted slip/lockup events for fault injection. A sensitivity sweep across $N \in [40, 50]$ is used to verify that the validation filters are robust to minor calibration differences."
+> "The simulated wheel-speed sensor calculates speed using $v = \frac{f \times C}{N}$. Noise parameters are based on Bosch HA-D 90 and HA-M datasheet specifications, using a frequency-banded Gaussian model. The tone ring is modeled with $N = 48$ teeth, corresponding to the standardized Bosch ABS tone rings utilized in modern KTM and Ducati models (e.g., KTM 1290 Super Duke / Adventure and Ducati Panigale/Multistrada). The model includes continuous noise (Gaussian jitter and 2.5 MHz timer quantization). A sensitivity sweep across $N \in [40, 50]$ is used to verify that the validation filters are robust to minor calibration differences."
 
 ---
 

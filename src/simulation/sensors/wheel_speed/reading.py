@@ -11,4 +11,3 @@ class WheelSpeedReading:
     true_speed_mps: float
     pulse_frequency_hz: float
     timestamp: float
-    fault_active: bool
