@@ -72,7 +72,7 @@ The Gaussian noise standard deviation as a fraction of the ideal frequency, used
 
 ### `enable_quantization` · `bool` · default `True`
 
-Toggles the ECU inter-pulse timing quantization. 
+Toggles the ECU inter-pulse timing quantization.
 
 When enabled, the model simulates how a real Bosch ABS ECU processes speed: instead of aligning speed updates to the CARLA tick rate (which causes a blocky 1.62 m/s step pattern), it calculates the time between teeth, rounds it to the nearest ECU clock tick, and then converts it back to speed. This results in a realistic speed resolution of ~0.001 m/s at cruise speeds.
 

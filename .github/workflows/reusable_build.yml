@@ -1,0 +1,44 @@
+name: Reusable Build
+
+on:
+  workflow_call:
+
+jobs:
+  build:
+    name: Package Build Verification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version: "3.12"
+
+      - name: Build Package
+        run: uv build
+
+      - name: Verify Build Artifacts
+        run: |
+          ls -la dist/
+          tar_count=$(find dist/ -maxdepth 1 -name "*.tar.gz" | wc -l)
+          whl_count=$(find dist/ -maxdepth 1 -name "*.whl" | wc -l)
+          if [ "$tar_count" -eq 0 ] || [ "$whl_count" -eq 0 ]; then
+            echo "Error: Package build did not produce expected .tar.gz or .whl files."
+            exit 1
+          fi
+          echo "Verified dist contents successfully."
+
+      - name: Test Package Installation
+        run: |
+          # Create an isolated test environment
+          uv venv test_install_env
+          source test_install_env/bin/activate
+
+          # Install the built wheel
+          uv pip install dist/*.whl
+
+          # Verify package is importable
+          python -c "import simulation; print('Package imported successfully in isolated environment.')"

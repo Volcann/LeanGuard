@@ -40,6 +40,6 @@ This vector is converted from CARLA's raw radians per second ($\text{rad/s}$), l
 **The perfect ground-truth roll (lean) angle directly from the physics engine.** Units: degrees.
 
 > [!CAUTION]
-> This field exists **exclusively for offline analysis, plotting, and error auditing**. 
-> 
+> This field exists **exclusively for offline analysis, plotting, and error auditing**.
+>
 > Because a physical IMU cannot directly measure lean angle (due to gravity and centrifugal forces balancing out during coordinated turns), using this field in any safety-critical estimation or controller logic violates physical realism and represents a simulation cheat. It must **never** be passed to the EKF or DEDR pipelines.

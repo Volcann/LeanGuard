@@ -6,7 +6,6 @@ import math
 
 
 class LowPassFilter:
-    """Simple discrete first-order IIR filter matching a given -3 dB cutoff."""
 
     def __init__(self, cutoff_hz: float) -> None:
         self._cutoff_hz = cutoff_hz

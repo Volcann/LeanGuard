@@ -10,7 +10,7 @@ This document details the design of the simulated Inertial Measurement Unit (IMU
 
 ## 1. The Bosch Motorsport MM5.10 as a Public Proxy
 
-Production street-bike IMUs are proprietary and their detailed performance specifications are usually kept confidential by manufacturers. To make our simulation academically reproducible, we use the public technical specifications of the Bosch Motorsport MM5.10 sensor as a mathematically sound proxy. 
+Production street-bike IMUs are proprietary and their detailed performance specifications are usually kept confidential by manufacturers. To make our simulation academically reproducible, we use the public technical specifications of the Bosch Motorsport MM5.10 sensor as a mathematically sound proxy.
 
 Key characteristics used to model the sensor:
 * **2-axis rotation rate** (Yaw rate and Roll rate up to $\pm 160^{\circ}/\text{s}$)
@@ -22,7 +22,7 @@ Key characteristics used to model the sensor:
 
 ## 2. Risk 1 Caveat: Ground-Truth Roll Angle
 
-A critical bug/limitation in naive simulation IMUs is the direct usage of the vehicle's ground-truth roll/lean angle. 
+A critical bug/limitation in naive simulation IMUs is the direct usage of the vehicle's ground-truth roll/lean angle.
 
 > [!WARNING]
 > In the real world, a standard IMU cannot sense the motorcycle's lean angle directly. This is because gravity and centrifugal force cancel out in the lateral axis during a coordinated turn, meaning the lateral accelerometer reads approximately $0\text{ g}$ rather than showing the lean angle.
@@ -33,7 +33,7 @@ A critical bug/limitation in naive simulation IMUs is the direct usage of the ve
 
 ## 3. Low-Pass Filter Discrete Implementation
 
-The Bosch MM5.10 datasheet offers three selectable $-3\text{ dB}$ cutoff frequencies: $15\text{ Hz}$, $30\text{ Hz}$, or $60\text{ Hz}$. 
+The Bosch MM5.10 datasheet offers three selectable $-3\text{ dB}$ cutoff frequencies: $15\text{ Hz}$, $30\text{ Hz}$, or $60\text{ Hz}$.
 We implement this via a discrete-time first-order Infinite Impulse Response (IIR) filter.
 
 The continuous-time time constant $\tau$ (RC) for a given cutoff frequency $f_c$ is:
