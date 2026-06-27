@@ -182,7 +182,7 @@ test-cov:
 
 .PHONY: audit
 audit:
-	uvx pip-audit
+	uvx --python 3.12 pip-audit
 
 .PHONY: ci
 ci: precommit typecheck test-cov audit build

@@ -26,4 +26,4 @@ jobs:
           python-version: "3.12"
 
       - name: Run Dependency Audit
-        run: uvx pip-audit
+        run: uvx --python 3.12 pip-audit
