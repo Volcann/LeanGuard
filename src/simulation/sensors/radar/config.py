@@ -13,7 +13,7 @@ class RearRadarConfig:
 
     horizontal_fov_deg: float = 110.0
     """Antenna-defined horizontal field of view.
-    
+
     The AWR1642 chip is antenna-agnostic; 110° reflects a typical BSD antenna
     configuration on TI evaluation hardware.  See docs/config.md § FOV.
     """
@@ -24,7 +24,7 @@ class RearRadarConfig:
     range_m: float = 30.0
     """Maximum detection range in metres.
 
-    Blind-spot relevant range is 3–10 m; 30 m provides forward headroom for
+    Blind-spot relevant range is 3-10 m; 30 m provides forward headroom for
     approach-speed estimation.  Matches CARLA sensor attribute `range`.
     """
 
@@ -47,7 +47,7 @@ class RearRadarConfig:
 
     mount_yaw_deg: float = 180.0
     """Sensor heading relative to actor forward vector.
-    
+
     180° = facing rearward, matching CARLA's yaw convention.
     """
 

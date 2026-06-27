@@ -1,0 +1,29 @@
+name: Reusable Security Scan
+
+on:
+  workflow_call:
+
+jobs:
+  security:
+    name: Secrets & Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # TruffleHog needs the git history to scan commits
+
+      - name: TruffleHog Secrets Scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: "" # Scan all commits in the event payload
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version: "3.12"
+
+      - name: Run Dependency Audit
+        run: uvx pip-audit

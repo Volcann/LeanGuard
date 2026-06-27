@@ -68,8 +68,8 @@ class RearRadar:
 
         # AWR1642: IF bandwidth 5 MHz → sparse point cloud; see docs/design.md § 2
         radar_bp.set_attribute("horizontal_fov", str(self._config.horizontal_fov_deg))
-        radar_bp.set_attribute("vertical_fov",   str(self._config.vertical_fov_deg))
-        radar_bp.set_attribute("range",           str(self._config.range_m))
+        radar_bp.set_attribute("vertical_fov", str(self._config.vertical_fov_deg))
+        radar_bp.set_attribute("range", str(self._config.range_m))
         radar_bp.set_attribute("points_per_second", str(self._config.points_per_second))
 
         # ------------------------------------------------------------------ #

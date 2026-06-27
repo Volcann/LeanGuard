@@ -164,6 +164,10 @@ format:
 format-check:
 	uv run black --check src tests
 
+.PHONY: precommit
+precommit:
+	uv run pre-commit run --all-files
+
 .PHONY: typecheck
 typecheck:
 	uv run mypy src
@@ -174,10 +178,14 @@ test:
 
 .PHONY: test-cov
 test-cov:
-	uv run pytest --cov=src --cov-report=html --cov-report=term-missing
+	uv run pytest --cov=src --cov-report=html --cov-report=term-missing --cov-fail-under=40
+
+.PHONY: audit
+audit:
+	uvx pip-audit
 
 .PHONY: ci
-ci: lint format-check typecheck test
+ci: precommit typecheck test-cov audit build
 
 .PHONY: clean
 clean:

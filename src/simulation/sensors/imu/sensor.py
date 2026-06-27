@@ -96,24 +96,26 @@ class ImuSensor:
             roll_deg_ground_truth = 0.0
 
         timestamp = measurement.timestamp
-        dt_s = (
-            0.0
-            if self._last_timestamp is None
-            else max(timestamp - self._last_timestamp, 0.0)
-        )
+        dt_s = 0.0 if self._last_timestamp is None else max(timestamp - self._last_timestamp, 0.0)
         self._last_timestamp = timestamp
 
         # Stage 1 — unit conversion; see docs/design.md § 4.1
-        gyro_raw_dps = tuple(math.degrees(v) for v in (
-            measurement.gyroscope.x,
-            measurement.gyroscope.y,
-            measurement.gyroscope.z,
-        ))
-        accel_raw_g = tuple(v / 9.81 for v in (
-            measurement.accelerometer.x,
-            measurement.accelerometer.y,
-            measurement.accelerometer.z,
-        ))
+        gyro_raw_dps = tuple(
+            math.degrees(v)
+            for v in (
+                measurement.gyroscope.x,
+                measurement.gyroscope.y,
+                measurement.gyroscope.z,
+            )
+        )
+        accel_raw_g = tuple(
+            v / 9.81
+            for v in (
+                measurement.accelerometer.x,
+                measurement.accelerometer.y,
+                measurement.accelerometer.z,
+            )
+        )
 
         gyro_out: list[float] = []
         for val, filt in zip(gyro_raw_dps, self._gyro_filters, strict=False):

@@ -2,7 +2,7 @@
 
 ## Why This Document Exists
 
-Our infrastructure-rejection algorithm (DEDR) needs to know the motorcycle's speed (`v_ego`). While the CARLA simulator can give us the exact speed for free (`actor.get_velocity()`), using it directly isn't realistic. A real motorcycle ECU doesn't have access to perfect, noise-free velocity data. 
+Our infrastructure-rejection algorithm (DEDR) needs to know the motorcycle's speed (`v_ego`). While the CARLA simulator can give us the exact speed for free (`actor.get_velocity()`), using it directly isn't realistic. A real motorcycle ECU doesn't have access to perfect, noise-free velocity data.
 
 This document explains how real wheel-speed sensors work and how we model them in our simulation, ensuring our testing and results are physically defensible.
 
@@ -34,7 +34,7 @@ This formula is standard across the automotive industry and is confirmed by peer
 
 ### Why This Formula Is Solid Regardless of the Tooth-Count Debate
 
-The formula itself is basic physics—converting rotational frequency to linear speed based on wheel geometry. The number of teeth (`N`) is just a parameter. 
+The formula itself is basic physics—converting rotational frequency to linear speed based on wheel geometry. The number of teeth (`N`) is just a parameter.
 
 If we have uncertainty about the exact tooth count of a specific bike, it's a **calibration question**, not a formula validity question. The relationship between teeth, frequency, circumference, and speed holds no matter what `N` is.
 
@@ -137,9 +137,9 @@ This gives us a more realistic simulation of how the sensor behaves during norma
 We updated the simulation model from a simple discrete update to an event-driven timing model to improve accuracy.
 
 ### 1. The Original Problem (The Bug)
-The initial code counted how many teeth passed the sensor during each simulator tick ($30\text{ Hz}$ or $33.3\text{ ms}$). Because this interval is so large compared to the frequency of physical sensor pulses, it caused severe speed quantization. 
+The initial code counted how many teeth passed the sensor during each simulator tick ($30\text{ Hz}$ or $33.3\text{ ms}$). Because this interval is so large compared to the frequency of physical sensor pulses, it caused severe speed quantization.
 
-At a typical speed of $13.7\text{ m/s}$ (around $30\text{ mph}$), the wheel spins at roughly $7\text{ rev/s}$. With $37$ teeth, the sensor should generate about $260$ pulses per second. Over a single $33.3\text{ ms}$ simulator tick, only about $8.6$ teeth pass the sensor. Since the simulator could only count whole teeth per frame, the count had to be either $8$ or $9$. 
+At a typical speed of $13.7\text{ m/s}$ (around $30\text{ mph}$), the wheel spins at roughly $7\text{ rev/s}$. With $37$ teeth, the sensor should generate about $260$ pulses per second. Over a single $33.3\text{ ms}$ simulator tick, only about $8.6$ teeth pass the sensor. Since the simulator could only count whole teeth per frame, the count had to be either $8$ or $9$.
 * Counting $8$ teeth in $33.3\text{ ms}$ calculates to $12.85\text{ m/s}$.
 * Counting $9$ teeth in $33.3\text{ ms}$ calculates to $14.46\text{ m/s}$.
 
@@ -156,7 +156,7 @@ We rewrote the model to track when each tooth passes the sensor. We simulate a $
 
 The event-driven model improved speed resolution from the original $1.62\text{ m/s}$ simulator steps to $\approx 0.001\text{ m/s}$. We validated this model both theoretically (against the Bosch Motorsport HA-M datasheet specifications) and empirically (via simulation telemetry logs):
 
-* **Theoretical Prediction:** 
+* **Theoretical Prediction:**
   The Bosch HA-M sensor datasheet specifies a repeatability accuracy of $< 4\%$ at operating frequencies above $200\text{ Hz}$ (speeds above $\approx 32\text{ km/h}$). Modeling this as a $1\sigma$ standard deviation of the Gaussian jitter:
   $$\sigma_f = f_{\text{true}} \times 0.04$$
   Since speed $v$ is proportional to frequency ($v = f \times \frac{C}{N}$), the standard deviation of the velocity estimate scales directly:
@@ -166,7 +166,7 @@ The event-driven model improved speed resolution from the original $1.62\text{ m
 
 * **Empirical Validation:**
   Running the CARLA simulation at a constant $13.7\text{ m/s}$ and logging the estimated speeds yields a sample standard deviation of **$0.55\text{ m/s}$**, matching the theoretical prediction of $0.548\text{ m/s}$.
-  
+
 * **Quantization Effect (Why the Clock Rounding Does Almost Nothing — But Still Matters):**
 
   **In plain language:** The ECU doesn't measure time perfectly continuously — it uses a very fast internal digital clock ticking at 2.5 MHz. Think of it like a stopwatch that can only display time in steps of $0.4\text{ μs}$ instead of reading perfectly smooth, infinite decimal places. When the ECU measures the gap between two tooth pulses, it rounds that gap to the nearest clock tick. This rounding introduces a tiny imprecision when converting back to speed.
