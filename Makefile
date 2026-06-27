@@ -8,8 +8,8 @@ success        := ✔ done
 export
 
 CARLA_ROOT     ?= /opt/carla-simulator
-APP_MODULE     ?= leanguard.main
-PYGAME_MODULE  ?= leanguard.viewer
+APP_MODULE     ?= simulation
+PYGAME_MODULE  ?= simulation.viewer
 CACHE_DIRS     := __pycache__ .mypy_cache .ruff_cache .pytest_cache htmlcov dist
 
 BOLD   := \033[1m
@@ -31,10 +31,12 @@ help:
 	@printf "    $(BOLD)ps$(RESET)           Show container status\n"
 	@echo ""
 	@printf "  $(GREEN)Simulation$(RESET)\n"
-	@printf "    $(BOLD)carla$(RESET)        Launch native CARLA server (off-screen, low quality)\n"
+	@printf "    $(BOLD)carla$(RESET)        Launch CARLA server in background (detached)\n"
+	@printf "    $(BOLD)carla.stop$(RESET)   Stop the CARLA background server\n"
+	@printf "    $(BOLD)carla.status$(RESET) Show CARLA server status\n"
 	@echo ""
 	@printf "  $(GREEN)Application$(RESET)\n"
-	@printf "    $(BOLD)app$(RESET)          Run LeanGuard via python -m\n"
+	@printf "    $(BOLD)app$(RESET)          Run LeanGuard (python -m simulation)\n"
 	@printf "    $(BOLD)pygame$(RESET)       Run Pygame CARLA client via python -m\n"
 	@printf "    $(BOLD)build$(RESET)        Build wheel and sdist into dist/\n"
 	@echo ""
@@ -73,6 +75,11 @@ logs:
 ps:
 	@$(dc) ps
 
+CARLA_LOG_FILE := /tmp/leanguard_carla.log
+
+carla_pid     = $$(ss -tlnp 2>/dev/null | grep ":$(CARLA_PORT) " | grep -oP 'pid=\K[0-9]+' | head -1)
+carla_running = ss -tlnp 2>/dev/null | grep -q ":$(CARLA_PORT) "
+
 .PHONY: carla
 carla:
 	@if [ ! -f "$(CARLA_ROOT)/CarlaUE4.sh" ]; then \
@@ -80,9 +87,53 @@ carla:
 		printf "  Set CARLA_ROOT in .env or environment.\n"; \
 		exit 1; \
 	fi
-	SDL_VIDEODRIVER=offscreen $(CARLA_ROOT)/CarlaUE4.sh \
-		-RenderOffScreen -quality-level=Low -benchmark \
-		-fps=20 -nosound -carla-rpc-port=$(CARLA_PORT)
+	@if $(carla_running); then \
+		printf "$(YELLOW)⚠ CARLA already running (pid=$(carla_pid), port=$(CARLA_PORT))$(RESET)\n"; \
+		exit 0; \
+	fi
+	@printf "  Starting CARLA on port $(CARLA_PORT)"
+	@DISPLAY=:0 nohup $(CARLA_ROOT)/CarlaUE4.sh \
+		-RenderOffScreen -quality-level=Low \
+		-fps=20 -nosound -carla-rpc-port=$(CARLA_PORT) \
+		> $(CARLA_LOG_FILE) 2>&1 &
+	@i=0; while [ $$i -lt 30 ]; do \
+		sleep 1; printf "."; \
+		if $(carla_running); then break; fi; \
+		i=$$((i+1)); \
+	done; printf "\n"
+	@if $(carla_running); then \
+		printf "  $(GREEN)✔ CARLA started$(RESET) (pid=$(carla_pid), port=$(CARLA_PORT)) → log: $(CARLA_LOG_FILE)\n"; \
+	else \
+		printf "$(BOLD)\033[31m✗ CARLA failed to start — check log: $(CARLA_LOG_FILE)$(RESET)\n"; \
+		exit 1; \
+	fi
+
+.PHONY: carla.stop
+carla.stop:
+	@BINARY=$$(ss -tlnp 2>/dev/null | grep ":$(CARLA_PORT) " | grep -oP 'pid=\K[0-9]+'); \
+	if [ -z "$$BINARY" ]; then \
+		printf "  $(YELLOW)CARLA is not running$(RESET)\n"; \
+		exit 0; \
+	fi; \
+	WRAPPER=$$(ps -o ppid= -p $$BINARY 2>/dev/null | tr -d ' '); \
+	ALL=$$(printf '%s\n%s\n' "$$BINARY" "$$WRAPPER" | grep -v '^[[:space:]]*$$' | sort -u | tr '\n' ' '); \
+	printf "  Killing PIDs: $$ALL\n"; \
+	echo $$ALL | xargs kill -9 2>/dev/null || true; \
+	sleep 1; \
+	if $(carla_running); then \
+		printf "$(YELLOW)⚠ Port $(CARLA_PORT) still active — try again$(RESET)\n"; \
+	else \
+		printf "  $(GREEN)✔ CARLA fully stopped$(RESET)\n"; \
+	fi
+
+.PHONY: carla.status
+carla.status:
+	@if $(carla_running); then \
+		printf "  $(GREEN)✔ CARLA running$(RESET) (pid=$(carla_pid), port=$(CARLA_PORT))\n"; \
+	else \
+		printf "  $(YELLOW)✗ CARLA not running$(RESET)\n"; \
+	fi
+
 
 .PHONY: app
 app:
