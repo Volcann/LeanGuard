@@ -32,7 +32,7 @@ Where:
 
 This formula is standard across the automotive industry and is documented in vehicle dynamics and diagnostic literature (e.g., Ladoiye et al. [4]).
 
-### Why This Formula Is Solid Regardless of the Tooth-Count Debate
+### 1.1 Why This Formula Is Solid Regardless of the Tooth-Count Debate
 
 The formula itself is basic physics—converting rotational frequency to linear speed based on wheel geometry. The number of teeth (`N`) is just a parameter. If we have uncertainty about the exact tooth count of a specific bike, it's a **calibration question**, not a formula validity question. The relationship between teeth, frequency, circumference, and speed holds no matter what `N` is.
 
@@ -68,7 +68,7 @@ We based our sensor model parameters on real hardware specifications rather than
 
 *(Note: Prior research attempted to reference aftermarket Yamaha tone rings with 37/38 teeth. These are rejected for the baseline setup due to the physical incompatibility of Bosch sensors on Yamaha hardware and provenance concerns with aftermarket parts.)*
 
-### 2.0 Why the Bosch HA-M? Sensor Selection Justification
+### 2.1 Why the Bosch HA-M? Sensor Selection Justification
 
 The choice of a specific sensor reference model is a deliberate methodological decision that directly affects the credibility of the simulation.
 
@@ -94,24 +94,24 @@ Three properties make the Bosch HA-M/HA-D 90 datasheets the correct choice as a 
 > [!NOTE]
 > The HA-M motorsport sensor works similarly to a standard ABS sensor, but it uses 3 wires instead of 2. This means the electrical noise may be a little different in real vehicles. We use the HA-M's published noise values as a safe estimate, not because the two sensors are exactly the same.
 
-### 2.0.1. The Physical Difference (3-Wire vs. 2-Wire)
+### 2.2 The Physical Difference (3-Wire vs. 2-Wire)
 * **Standard street-bike ABS sensors** usually have **2 wires**. They send their speed signals by varying the *current* flowing through the power wires. This current-loop method is highly resistant to electrical noise.
-* **The Bosch HA-M motorsport sensor** has **3 wires** (Power, Ground, and a separate Signal output). It sends signals as *voltage* pulses, which can be slightly more sensitive to electromagnetic noise from the motorcycle’s engine/ignition than a 2-wire current loop.
+* **The Bosch HA-M motorsport sensor** has **3 wires** (Power, Ground, and a separate Signal output). It sends signals as *voltage* pulses, which can be slightly more sensitive to electromagnetic noise from the motorcycle's engine/ignition than a 2-wire current loop.
 
-### 2.0.2. Why We Use It Anyway ("Safe Estimate")
+### 2.3 Why We Use It Anyway ("Safe Estimate")
 Because production motorcycle manufacturers keep their 2-wire ABS sensor data proprietary (secret), we cannot copy their exact noise profiles.
 
 By using the HA-M's published specifications (which allow for up to `< 4%` noise), we are testing our safety algorithms (DEDR) under a **worst-case (noisier) scenario**.
 
 > [!NOTE]
-> *"I acknowledge they have different wiring and slightly different noise behaviors. However, since production data is proprietary, I used the 3-wire HA-M datasheet as a **conservative, worst-case proxy**. If our safety filter can handle the higher noise of the HA-M, it will easily handle the cleaner signal of a production 2-wire ABS sensor."*
+> *"I acknowledge they have different wiring and slightly different noise behaviors. However, since production data is proprietary, I used the 3-wire HA-M datasheet as a **conservative, worst-case proxy**. This is a reasonable working assumption, not a proven result: it has not been independently validated against real 2-wire sensor data, and a 2-wire current-loop sensor could in principle have failure modes the HA-M doesn't exhibit. The claim here is narrower than 'will easily handle' — it is that testing DEDR against the HA-M's noisier envelope gives us a margin of safety relative to the cleaner signal a production 2-wire sensor is expected to produce, not a guarantee of performance on that sensor."*
 
-### 2.1 Academic Justifications from the Bosch HA-M Technical Specification
+### 2.4 Academic Justifications from the Bosch HA-M Technical Specification
 
 
 The Bosch HA-M technical specification [1] provides three main justifications for our model setup:
 
-1. **Noise Bounds:** The datasheet specifies a `< 4%` repeatability error of the falling edge of the tooth. While repeatability describes consistency across repeated measurements rather than absolute accuracy, this project uses that figure as a conservative proxy for total sensor noise (e.g., including jitter and mounting tolerances).
+1. **Noise Bounds:** As established in §2.3, the datasheet's `< 4%` repeatability error of the falling edge of the tooth is used as our conservative proxy for total sensor noise.
 2. **Sensor Bandwidth:** The sensor supports up to 4.2 kHz. On our target setup:
    * At `N = 48` and `C = 1.98 m`, the maximum measurable speed is:
      $$v_{\max} = \frac{4200 \times 1.98}{48} \approx 173.25\text{ m/s (approx 387 mph)}$$
@@ -121,7 +121,7 @@ The Bosch HA-M technical specification [1] provides three main justifications fo
 
 ---
 
-### 2.2 The 4,200 Hz Hard Frequency Ceiling
+### 2.5 The 4,200 Hz Hard Frequency Ceiling
 
 #### What the Datasheet Actually Specifies
 
@@ -189,19 +189,19 @@ This gives us a more realistic simulation of how the sensor behaves during norma
 > [!NOTE]
 > The measurement noise model uses a frequency-banded approach drawing from two Bosch datasheets to define the tighter-to-wider noise envelope: the HA-D 90 [2] (< 1% repeatability error) for lower speed/frequency ranges, and the HA-M [1] (< 4% repeatability error) for higher frequency ranges. Together, they form our simulated noise model.
 
----
+### 3.1 Methodology Summary (For the Thesis Methodology Section)
 
-## 4. Summary Statement (For the Thesis Methodology Section)
+This condenses §1 and §3 above into a single citable statement:
 
 > "The simulated wheel-speed sensor calculates speed using $v = \frac{f \times C}{N}$. Noise parameters are based on Bosch HA-D 90 and HA-M datasheet specifications, using a frequency-banded Gaussian model. The tone ring is modeled with $N = 48$ teeth, corresponding to the standardized Bosch ABS tone rings utilized in modern KTM and Ducati models (e.g., KTM 1290 Super Duke / Adventure and Ducati Panigale/Multistrada). The model includes continuous noise (Gaussian jitter and 2.5 MHz timer quantization). A sensitivity sweep across $N \in [40, 50]$ is used to verify that the validation filters are robust to minor calibration differences."
 
 ---
 
-## 5. Empirical Validation & Resolution Breakthrough (The Thesis Transition)
+## 4. Empirical Validation & Resolution Breakthrough (The Thesis Transition)
 
 We updated the simulation model from a simple discrete update to an event-driven timing model to improve accuracy.
 
-### 1. The Original Problem (The Bug)
+### 4.1 The Original Problem (The Bug)
 The initial code counted how many teeth passed the sensor during each simulator tick ($30\text{ Hz}$ or $33.3\text{ ms}$). Because this interval is so large compared to the frequency of physical sensor pulses, it caused severe speed quantization.
 
 At a typical speed of $13.7\text{ m/s}$ (around $30\text{ mph}$), the wheel spins at roughly $7\text{ rev/s}$. With $37$ teeth, the sensor should generate about $260$ pulses per second. Over a single $33.3\text{ ms}$ simulator tick, only about $8.6$ teeth pass the sensor. Since the simulator could only count whole teeth per frame, the count had to be either $8$ or $9$.
@@ -210,14 +210,14 @@ At a typical speed of $13.7\text{ m/s}$ (around $30\text{ mph}$), the wheel spin
 
 This meant the speed output fluctuated wildly between $12.85\text{ m/s}$ and $14.46\text{ m/s}$—a massive quantization step of $1.62\text{ m/s}$—even at a perfectly constant speed. This step-like profile is highly unrealistic for a wheel speed sensor. To get reliable and accurate speed data, we decided to implement a more robust model that isn't tied to the simulator's tick rate.
 
-### 2. Rejecting the Wrong Fixes
+### 4.2 Rejecting the Wrong Fixes
 * **Option 1 (Interpolation):** Rejected because it just smooths the jumps without adding real physics.
 * **Option 3 (High simulator tick rate):** Rejected because it causes high CPU load and doesn't match how a real ECU works.
 
-### 3. The Winning Solution (Option 2 - Event-Driven Inter-Pulse Timing)
+### 4.3 The Winning Solution (Option 2 - Event-Driven Inter-Pulse Timing)
 We rewrote the model to track when each tooth passes the sensor. We simulate a $2.5\text{ MHz}$ ECU timer by rounding these timestamps to the nearest $0.4\text{ }\mu\text{s}$, then back-calculating the speed from the time difference.
 
-### 4. The Results & Validation
+### 4.4 The Results & Validation
 
 The event-driven model improved speed resolution from the original $1.62\text{ m/s}$ simulator steps to $\approx 0.001\text{ m/s}$. We validated this model both theoretically (against the Bosch Motorsport HA-M datasheet specifications) and empirically (via simulation telemetry logs):
 
@@ -266,7 +266,7 @@ The event-driven model improved speed resolution from the original $1.62\text{ m
 
   * Because the rounding itself is just two arithmetic operations (a `round()` and a division), it adds **zero measurable CPU overhead** regardless of which clock is being simulated.
 
-### 5. The "Honest Caveat" (What Is and Isn't Solved)
+### 4.5 The "Honest Caveat" (What Is and Isn't Solved)
 It is important to distinguish between **speed estimation resolution** (which we solved) and **physics update rate** (which is a simulator limitation):
 
 * **Solved (Speed Resolution):** We no longer have the $1.62\text{ m/s}$ jumps in our telemetry logs. Because we track sub-tick tooth crossings, our speed estimation is smooth, achieving a resolution of $\approx 0.001\text{ m/s}$.
@@ -274,14 +274,14 @@ It is important to distinguish between **speed estimation resolution** (which we
 
 ---
 
-## 6. Open Items Still Worth Resolving
+## 5. Open Items Still Worth Resolving
 
 * **Verification of N:** $N = 48$ is the verified slot count for standard Bosch ABS wheels on KTM/Ducati/BMW systems.
 * **Sensitivity Sweep:** We recommend running tests across $N \in \{40, 44, 48, 50\}$ to ensure DEDR performance does not depend on a single assumed tooth count.
 
 ---
 
-## 7. References
+## 6. References
 
 * **[1]** Bosch Engineering GmbH (2026). *Speed Sensor Hall-Effect HA-M Technical Specifications* (Doc ID: 53202827 | en, 1, 27. Jan 2026). Abstatt, Germany: Bosch Motorsport. Available: [Bosch Motorsport HA-M Speed Sensor PDF](https://www.bosch-motorsport.com/content/downloads/Raceparts/Resources/pdf/Data%20Sheet_69827851_Speed_Sensor_Hall-Effect_HA-M.pdf)
 * **[2]** Bosch Engineering GmbH. *Speed Sensor Hall-Effect HA-D 90 Technical Specifications* (Doc ID: 69813003). Abstatt, Germany: Bosch Motorsport. Available: [Bosch Motorsport HA-D 90 Speed Sensor PDF](https://www.bosch-motorsport.com/content/downloads/Raceparts/Resources/pdf/Data%20Sheet_69813003_Speed_Sensor_Hall-Effect_HA-D_90.pdf)
