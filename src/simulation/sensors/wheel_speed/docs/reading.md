@@ -1,38 +1,44 @@
 # `WheelSpeedReading` — Field Reference
 
-`WheelSpeedReading` is the data structure returned by the `WheelSpeedSensor` at the end of each simulation frame. This reference explains what each field represents and how it is used in the pipeline.
+## 1. Overview
 
----
+`WheelSpeedReading` is the data structure returned by the `WheelSpeedSensor` at the end of each simulation frame. This reference specifies what each field represents and how it is intended to be used within the pipeline.
 
-## `speed_mps` · `float`
+## 2. Field Reference
 
-**The speed value ($v_{\text{ego}}$) that should be passed to DEDR.** Units: meters per second.
+### 2.1 Primary Sensor Output
 
-This is the final speed output from the sensor simulation, after applying all corruption stages:
+#### `speed_mps` · `float`
 
-1. **Jitter:** Gaussian noise is added to the ideal pulse frequency.
-2. **Kinematic mapping:** The noisy frequency is converted to speed using `v = (f × C) / N`.
-3. **Quantization:** The speed is rounded to match the resolution of a 2.5 MHz ECU clock.
+**Definition.** The speed value ($v_{\text{ego}}$) that should be passed to DEDR. Units: meters per second.
 
-To keep tests realistic, you must always pass this field to downstream algorithms rather than the ground-truth speed.
+This is the final speed output from the sensor simulation, produced after three corruption stages are applied, in order:
 
----
+1. **Jitter.** Gaussian noise is added to the ideal pulse frequency.
+2. **Kinematic mapping.** The noisy frequency is converted to speed using $v = \frac{f \times C}{N}$.
+3. **Quantization.** The speed is rounded to match the resolution of a 2.5 MHz ECU clock.
 
-## `true_speed_mps` · `float`
+> [!IMPORTANT]
+> To keep tests realistic, downstream algorithms must always receive this field — never the ground-truth speed.
 
-**The exact ground-truth speed from the CARLA physics simulator.** Units: meters per second.
+### 2.2 Ground-Truth Reference (Offline Use Only)
 
-This is calculated as the Euclidean norm of the simulator's velocity vector:
+#### `true_speed_mps` · `float`
+
+**Definition.** The exact ground-truth speed from the CARLA physics simulator. Units: meters per second.
+
+This value is computed as the Euclidean norm of the simulator's velocity vector:
 
 $$v_{\text{true}} = \sqrt{v_x^2 + v_y^2 + v_z^2}$$
 
-This field is used only for offline analysis and plotting to measure the sensor's error. It must not be used in the real-time DEDR pipeline, since a real ECU only sees the noisy sensor output.
+> [!IMPORTANT]
+> This field is used only for offline analysis and plotting, to measure the sensor's error. It must not be used in the real-time DEDR pipeline, since a real ECU only ever sees the noisy sensor output.
 
----
+### 2.3 Intermediate Diagnostic Signal
 
-## `pulse_frequency_hz` · `float`
+#### `pulse_frequency_hz` · `float`
 
-**The simulated pulse frequency after noise is added, but before quantization.** Units: Hz.
+**Definition.** The simulated pulse frequency after noise has been added, but before quantization. Units: Hz.
 
 It is computed as:
 
@@ -41,16 +47,16 @@ f_ideal = (v_true × N) / C
 f_observed = f_ideal + Gaussian_noise(0, σ)
 ```
 
-We keep this field to help debug the signal chain, making it easier to see if a large speed error was caused by the random noise stage or the quantization stage.
+This field is retained to support debugging of the signal chain, making it possible to determine whether a large speed error originates from the random-noise stage or the quantization stage.
 
----
+### 2.4 Temporal Reference
 
-## `timestamp` · `float`
+#### `timestamp` · `float`
 
-**The simulator time when this reading was captured.** Units: seconds.
+**Definition.** The simulator time at which this reading was captured. Units: seconds.
 
-This is pulled from the simulator's clock and is used to:
-- Align wheel speed readings with IMU and radar data.
+This value is drawn from the simulator's clock and is used to:
+- Align wheel-speed readings with IMU and radar data.
 - Track processing latencies through the pipeline.
 
 This value is relative and resets to zero at the start of each simulation run.
