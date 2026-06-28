@@ -145,8 +145,8 @@ def test_wheel_speed_frequency_clipping() -> None:
     sensor._on_world_tick(mock_snapshot)
 
     reading = sensor.reading
-    assert reading.speed_mps == 0.0, (
-        f"Expected zeroed output above frequency ceiling, got {reading.speed_mps}"
-    )
+    assert (
+        reading.speed_mps == 0.0
+    ), f"Expected zeroed output above frequency ceiling, got {reading.speed_mps}"
     assert reading.pulse_frequency_hz == 0.0
     assert math.isclose(reading.true_speed_mps, 250.0, rel_tol=1e-5)
