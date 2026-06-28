@@ -64,6 +64,25 @@ class WheelSpeedSensor:
             true_speed_mps / distance_per_tooth_m if distance_per_tooth_m > 0 else 0.0
         )
 
+        # Stage 2 — hard frequency ceiling; see docs/design.md § 2.2
+        if (
+            self._config.max_operating_frequency_hz > 0
+            and ideal_pulse_freq_hz > self._config.max_operating_frequency_hz
+        ):
+            logger.warning(
+                "Pulse frequency %.1f Hz exceeds HA-M ceiling (%.1f Hz) — zeroing output.",
+                ideal_pulse_freq_hz,
+                self._config.max_operating_frequency_hz,
+            )
+            with self._lock:
+                self._reading = WheelSpeedReading(
+                    speed_mps=0.0,
+                    true_speed_mps=true_speed_mps,
+                    pulse_frequency_hz=0.0,
+                    timestamp=snapshot.timestamp.elapsed_seconds,
+                )
+            return
+
         # Banded noise — see docs/config.md § Noise Model
         noise_fraction = (
             self._config.low_freq_noise_pct
@@ -81,8 +100,7 @@ class WheelSpeedSensor:
         # Stage 3 — convert noisy frequency back to speed
         noisy_speed_mps = noisy_pulse_freq_hz * distance_per_tooth_m
 
-        # Stage 4 — ECU inter-pulse timing quantization
-        # see docs/config.md § Quantization
+        # Stage 4 — ECU inter-pulse timing quantization; see docs/config.md § Quantization
         estimated_speed_mps = noisy_speed_mps
         if self._config.enable_quantization and noisy_speed_mps > 0 and distance_per_tooth_m > 0:
             ideal_inter_pulse_s = distance_per_tooth_m / noisy_speed_mps

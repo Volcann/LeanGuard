@@ -83,7 +83,15 @@ The research contribution in two sentences: *"This work demonstrates that motorc
 ```
 LeanGuard/
 ├── src/
-│   └── shared/             # Shared utilities and base modules
+│   ├── shared/             # Shared utilities and base modules
+│   └── simulation/         # Core CARLA simulation research platform
+│       ├── sensors/        # Sensor corruption & processing pipelines
+│       │   ├── imu/        # Bosch MM5.10 IMU sensor model
+│       │   ├── radar/      # Rear radar simulation
+│       │   └── wheel_speed/# Wheel speed sensor simulation
+│       ├── viewer/         # Pygame viewer / client HUD visualization
+│       ├── carla_client.py # Client wrapper for CARLA interaction
+│       └── lean_filter.py  # Lean-angle geometric filter implementation
 ├── .editorconfig           # Editor normalisation rules
 ├── .env.example            # Environment variable template
 ├── .gitignore              # Git ignore rules
@@ -134,25 +142,50 @@ See [Configuration](#configuration) for a full description of each variable.
 
 ### Running Locally
 
+Ensure your CARLA simulator is running (either locally or remotely). You can manage a local CARLA instance via Makefile targets:
 ```bash
-# Start the application
-make run
+# Start CARLA server in the background
+make carla
+
+# Check CARLA server status
+make carla.status
+
+# Stop CARLA server
+make carla.stop
+```
+
+Once CARLA is running, you can run the main simulation client or the Pygame visualizer:
+
+```bash
+# Run LeanGuard simulation client
+make app
 
 # Or directly
-uv run python -m leanguard
+uv run python -m simulation
+```
+
+```bash
+# Run the Pygame visualizer
+make pygame
+
+# Or directly
+uv run python -m simulation.viewer
 ```
 
 ### Running with Docker
 
 ```bash
-# Build and start all services
-make docker-up
+# Build and start all services in foreground
+make up
+
+# Start services in the background (detached)
+make up.d
 
 # View logs
-make docker-logs
+make logs
 
-# Tear down
-make docker-down
+# Tear down services
+make down
 ```
 
 ---
@@ -188,12 +221,26 @@ make test-cov
 uv run pytest tests/path/to/test_file.py -v
 ```
 
+#### Viewing Test Coverage Report
+
+Running `make test-cov` generates a detailed HTML coverage report in the `htmlcov/` directory. You can view this report using one of the following methods:
+
+- **Method 1 (Direct file access):** Open your web browser and load the index page directly using the file path, for example:
+  ```text
+  file:///home/folium/LeanGuard/htmlcov/index.html
+  ```
+- **Method 2 (Local HTTP server):** Start a lightweight web server to serve the report locally:
+  ```bash
+  python3 -m http.server --directory htmlcov 8000
+  ```
+  Then, navigate to [http://localhost:8000](http://localhost:8000) in your browser.
+
 ### Pre-commit Hooks
 
 Pre-commit hooks run automatically on `git commit`. To install them:
 
 ```bash
-make hooks
+uv run pre-commit install
 ```
 
 To run hooks manually against all files:
