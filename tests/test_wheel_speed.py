@@ -115,3 +115,38 @@ def test_wheel_speed_noise_scaling() -> None:
     sensor._on_world_tick(mock_snapshot)
     reading_high = sensor.reading
     assert abs(reading_high.speed_mps - 20.0) < 20.0 * 0.20
+
+
+def test_wheel_speed_frequency_clipping() -> None:
+    mock_world = MagicMock()
+    mock_actor = MagicMock()
+    mock_world.on_tick.return_value = 123
+
+    mock_velocity = MagicMock()
+    mock_velocity.x = 250.0
+    mock_velocity.y = 0.0
+    mock_velocity.z = 0.0
+    mock_actor.get_velocity.return_value = mock_velocity
+
+    config = WheelSpeedSensorConfig(
+        num_teeth=48,
+        wheel_circumference_m=1.98,
+        max_operating_frequency_hz=4200.0,
+        low_freq_noise_pct=0.0,
+        high_freq_noise_pct=0.0,
+        enable_quantization=False,
+    )
+
+    sensor = WheelSpeedSensor(mock_world, mock_actor, config)
+
+    mock_snapshot = MagicMock()
+    mock_snapshot.timestamp.elapsed_seconds = 5.0
+
+    sensor._on_world_tick(mock_snapshot)
+
+    reading = sensor.reading
+    assert reading.speed_mps == 0.0, (
+        f"Expected zeroed output above frequency ceiling, got {reading.speed_mps}"
+    )
+    assert reading.pulse_frequency_hz == 0.0
+    assert math.isclose(reading.true_speed_mps, 250.0, rel_tol=1e-5)

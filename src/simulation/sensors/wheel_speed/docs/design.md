@@ -2,7 +2,7 @@
 
 ## Why This Document Exists
 
-Our infrastructure-rejection algorithm (DEDR) needs to know the motorcycle's speed (`v_ego`). While the CARLA simulator can give us the exact speed for free (`actor.get_velocity()`), using it directly isn't realistic. A real motorcycle ECU doesn't have access to perfect, noise-free velocity data.
+Our infrastructure-rejection algorithm (DEDR) needs to know the motorcycle's speed (`v_ego`). While the CARLA simulator can give us the exact speed for free (`actor.get_velocity()`), using it directly isn't realistic, and using this setup as-is would be dishonest or cheating. A real motorcycle ECU doesn't have access to perfect, noise-free velocity data.
 
 This document explains how real wheel-speed sensors work and how we model them in our simulation, ensuring our testing and results are physically defensible.
 
@@ -30,26 +30,23 @@ Where:
 * `C` = wheel circumference (m)
 * `N` = number of teeth on the ring
 
-This formula is standard across the automotive industry and is confirmed by peer-reviewed studies on two-wheeled retrofits.
+This formula is standard across the automotive industry and is documented in vehicle dynamics and diagnostic literature (e.g., Ladoiye et al. [4]).
 
 ### Why This Formula Is Solid Regardless of the Tooth-Count Debate
 
-The formula itself is basic physics—converting rotational frequency to linear speed based on wheel geometry. The number of teeth (`N`) is just a parameter.
+The formula itself is basic physics—converting rotational frequency to linear speed based on wheel geometry. The number of teeth (`N`) is just a parameter. If we have uncertainty about the exact tooth count of a specific bike, it's a **calibration question**, not a formula validity question. The relationship between teeth, frequency, circumference, and speed holds no matter what `N` is.
 
-If we have uncertainty about the exact tooth count of a specific bike, it's a **calibration question**, not a formula validity question. The relationship between teeth, frequency, circumference, and speed holds no matter what `N` is.
-
-**Worked Example (using front wheel defaults):**
-* `N` = 48 teeth
-* `C` = 1.98 m (typical for a 120/70-17 front tire on a KTM 1290 Super Duke R or Ducati Panigale V4)
-* `f` = 480 Hz (measured frequency)
-
-```
-1. Calculate revolutions per second:
-   rev/s = f / N = 480 / 48 = 10 rev/s
-
-2. Calculate linear speed:
-   v = rev/s × C = 10 × 1.98 = 19.8 m/s (~71.3 km/h)
-```
+> **Worked Example (using front wheel defaults):**
+> * `N` = 48 teeth
+> * `C` = 1.98 m (typical for a 120/70-17 front tire on a KTM 1290 Super Duke R or Ducati Panigale V4)
+> * `f` = 480 Hz (measured frequency)
+> ```
+> 1. Calculate revolutions per second:
+>    rev/s = f / N = 480 / 48 = 10 rev/s
+> 
+> 2. Calculate linear speed:
+>    v = rev/s × C = 10 × 1.98 = 19.8 m/s (~71.3 km/h)
+> ```
 
 If we need to adjust the tooth count later (e.g., to 40 or 50), we only need to change the `N` parameter. The math and the sensor model remain the same.
 
@@ -65,10 +62,9 @@ We based our sensor model parameters on real hardware specifications rather than
 | Production motorcycle ABS tone ring standards | KTM, Ducati, and BMW Motorrad platforms | Standardizes on 48-slot (or 50-slot) tone rings for front/rear wheel speed sensors connected to Bosch ABS / MSC ECUs. |
 
 **Key Takeaways from the Data:**
-1. **Yamaha Incompatibility Identified:** Standard Bosch speed sensors (like the HA-D 90) cannot be used on most Yamaha bikes as direct "plug-and-play" replacements because Yamaha uses proprietary OEM sensors and Japanese motorcycle connectors/pinouts.
-2. **KTM/Ducati native Bosch integration:** KTM and Ducati natively co-develop and integrate Bosch ABS (Motorcycle Stability Control) systems and wheel speed sensors.
-3. **Tooth count is standardized:** Modern Bosch motorcycle ABS tone rings utilize 48 slots. This represents the verified industry benchmark we simulate ($N = 48$).
-4. **Noise parameters are realistic:** The Bosch datasheets (HA-D 90 / HA-M) give us a solid, auditable reference for the shape and scale of our noise model. Specifically, the noise model uses a frequency-banded approach combining the HA-D 90 [2] spec (< 1% error) for low speeds and the HA-M [1] spec (< 4% error) for high speeds to define the noise envelope.
+1. **KTM/Ducati native Bosch integration:** KTM and Ducati natively co-develop and integrate Bosch ABS (Motorcycle Stability Control) systems and wheel speed sensors.
+2. **Tooth count is standardized:** Modern Bosch motorcycle ABS tone rings utilize 48 slots. This represents the verified industry benchmark we simulate ($N = 48$).
+3. **Noise parameters are realistic:** The Bosch datasheets (HA-D 90 / HA-M) give us a solid, auditable reference for the shape and scale of our noise model. Specifically, the noise model uses a frequency-banded approach combining the HA-D 90 [2] spec (< 1% error) for low speeds and the HA-M [1] spec (< 4% error) for high speeds to define the noise envelope.
 
 *(Note: Prior research attempted to reference aftermarket Yamaha tone rings with 37/38 teeth. These are rejected for the baseline setup due to the physical incompatibility of Bosch sensors on Yamaha hardware and provenance concerns with aftermarket parts.)*
 
@@ -95,18 +91,87 @@ Three properties make the Bosch HA-M/HA-D 90 datasheets the correct choice as a 
 
 **In short:** The simulation combines the verified **48-slot geometry** of production street-bike ABS rings (KTM/Ducati) with the verified **physical noise limits** ($<4\%$ jitter) published in Bosch's motorsport datasheets. This provides a transparent, realistic, and academically defensible foundation for the sensor model.
 
+> [!NOTE]
+> The HA-M motorsport sensor works similarly to a standard ABS sensor, but it uses 3 wires instead of 2. This means the electrical noise may be a little different in real vehicles. We use the HA-M's published noise values as a safe estimate, not because the two sensors are exactly the same.
+
+### 2.0.1. The Physical Difference (3-Wire vs. 2-Wire)
+* **Standard street-bike ABS sensors** usually have **2 wires**. They send their speed signals by varying the *current* flowing through the power wires. This current-loop method is highly resistant to electrical noise.
+* **The Bosch HA-M motorsport sensor** has **3 wires** (Power, Ground, and a separate Signal output). It sends signals as *voltage* pulses, which can be slightly more sensitive to electromagnetic noise from the motorcycle’s engine/ignition than a 2-wire current loop.
+
+### 2.0.2. Why We Use It Anyway ("Safe Estimate")
+Because production motorcycle manufacturers keep their 2-wire ABS sensor data proprietary (secret), we cannot copy their exact noise profiles. 
+
+By using the HA-M's published specifications (which allow for up to `< 4%` noise), we are testing our safety algorithms (DEDR) under a **worst-case (noisier) scenario**. 
+
+> [!NOTE]
+> *"I acknowledge they have different wiring and slightly different noise behaviors. However, since production data is proprietary, I used the 3-wire HA-M datasheet as a **conservative, worst-case proxy**. If our safety filter can handle the higher noise of the HA-M, it will easily handle the cleaner signal of a production 2-wire ABS sensor."*
+
 ### 2.1 Academic Justifications from the Bosch HA-M Technical Specification
 
 
 The Bosch HA-M technical specification [1] provides three main justifications for our model setup:
 
-1. **Noise Bounds:** The datasheet shows repeatability error is `< 4%` for frequencies under 4.2 kHz. This gives us a realistic upper limit for our Gaussian noise parameters.
+1. **Noise Bounds:** The datasheet specifies a `< 4%` repeatability error of the falling edge of the tooth. While repeatability describes consistency across repeated measurements rather than absolute accuracy, this project uses that figure as a conservative proxy for total sensor noise (e.g., including jitter and mounting tolerances).
 2. **Sensor Bandwidth:** The sensor supports up to 4.2 kHz. On our target setup:
    * At `N = 48` and `C = 1.98 m`, the maximum measurable speed is:
      $$v_{\max} = \frac{4200 \times 1.98}{48} \approx 173.25\text{ m/s (approx 387 mph)}$$
    * Even at `N = 50`, it is $166.32\text{ m/s}$ (approx 372 mph).
    Since a high-performance motorcycle like the KTM 1290 Super Duke R is electronically limited to around $78\text{ m/s}$ ($280\text{ km/h}$), the sensor operates with a $>2\times$ safety margin ($f_{\max} \approx 1890\text{ Hz}$ vs. sensor ceiling of $4200\text{ Hz}$) and won't saturate in real-world scenarios.
 3. **Validation Requirements:** The datasheet notes that raw pulse signals shouldn't be used for safety systems without signal validation. This justifies the existence of LeanGuard's validation layers (DEDR and EKF) to filter out transient errors.
+
+---
+
+### 2.2 The 4,200 Hz Hard Frequency Ceiling
+
+#### What the Datasheet Actually Specifies
+
+The official Bosch HA-M datasheet [1] states two things about the frequency limit:
+
+> *"Max. frequency: **≤ 4.2 kHz**"*
+> *"Accuracy repeatability of the falling edge of tooth: **< 4% (≤ 4.2 kHz)**"*
+
+That is the complete specification. **The datasheet contains no data, curve, or characterisation of sensor behaviour above 4,200 Hz.** The guarantee of `< 4%` accuracy ends exactly at 4.2 kHz — nothing further is stated.
+
+The Bosch HA-M Engineering Report [3] adds only a qualitative description of what happens above the ceiling:
+
+> *"Exceeding the upper physical ceiling of 4.2 kHz forces the internal electronics into a soft-clipping state. Instead of just scaling up noise gracefully, the sensor encounters phase lag, signal attenuation, and will ultimately drop pulses entirely."*
+
+This confirms the failure mode exists, but provides **zero quantitative data**: no amplitude curve, no secondary error bound, and no specific frequency at which the signal fully collapses.
+
+#### Exponential Attenuation Model — Investigated and Rejected
+
+During development, an exponential soft-clipping model was investigated to simulate the qualitative degradation described above:
+
+$$f_{\text{attenuated}} = f_{\text{max}} \cdot e^{-\alpha (f_{\text{ideal}} - f_{\text{max}})}$$
+
+An initial decay rate of $\alpha = 0.00032$ was derived by assuming:
+1. The sensor retains $\approx 15\%$ signal amplitude at $10{,}000\text{ Hz}$.
+2. At $10\text{ kHz}$, the error doubles to $< 8\%$ (a secondary spec boundary).
+3. Solving $0.15 = e^{-\alpha(10000 - 4200)}$ yields $\alpha \approx 0.00032$.
+
+**After re-reading both primary documents, this entire chain was rejected:** Neither the official datasheet [1] nor the engineering report [3] contains any data point beyond 4,200 Hz — no $10\text{ kHz}$ figure, no secondary $8\%$ error bound, no amplitude curve, and no signal-retention percentage at any over-speed frequency. The $\alpha$ value was therefore unverifiable from first principles and was dropped entirely.
+
+> [!CAUTION]
+> Any specific $\alpha$ value for an exponential attenuation model would be a made-up engineering constant with no primary-source support. Using it in a thesis methodology section would be academically indefensible.
+
+#### Decision: Hard Dropout
+
+The implementation uses a **hard cutoff**: if the ideal pulse frequency exceeds `max_operating_frequency_hz` (4,200 Hz), the sensor output is immediately set to zero (`speed_mps = 0.0`, `pulse_frequency_hz = 0.0`). This is the most conservative and academically defensible interpretation of the datasheet's `Max. frequency: ≤ 4.2 kHz` specification.
+
+#### Speed Threshold Mapping (Our Motorcycle Setup)
+
+For our baseline configuration ($N = 48$, $C = 1.98\text{ m}$):
+
+$$v_{\text{cutoff}} = \frac{f_{\text{max}} \times C}{N} = \frac{4200 \times 1.98}{48} \approx 173.25\text{ m/s} \approx 624\text{ km/h}$$
+
+This is physically unreachable by any production motorcycle. For reference:
+
+| Setup | $N$ | $v_{\text{cutoff}}$ | Reachable? |
+|---|---|---|---|
+| Our baseline (KTM/Ducati ABS) | 48 | $173.25\text{ m/s}$ ($624\text{ km/h}$) | No |
+| Dense tone ring (dev rig) | 120 | $69.3\text{ m/s}$ ($249.5\text{ km/h}$) | Edge case at top speed |
+
+The cutoff logic is a **correctness safety rail** — it ensures the model never produces physically invalid output if, for example, a high-density tone ring configuration is tested. It will never fire in normal simulation with the default $N = 48$ setup.
 
 ---
 
@@ -220,3 +285,5 @@ It is important to distinguish between **speed estimation resolution** (which we
 
 * **[1]** Bosch Engineering GmbH (2026). *Speed Sensor Hall-Effect HA-M Technical Specifications* (Doc ID: 53202827 | en, 1, 27. Jan 2026). Abstatt, Germany: Bosch Motorsport. Available: [Bosch Motorsport HA-M Speed Sensor PDF](https://www.bosch-motorsport.com/content/downloads/Raceparts/Resources/pdf/Data%20Sheet_69827851_Speed_Sensor_Hall-Effect_HA-M.pdf)
 * **[2]** Bosch Engineering GmbH. *Speed Sensor Hall-Effect HA-D 90 Technical Specifications* (Doc ID: 69813003). Abstatt, Germany: Bosch Motorsport. Available: [Bosch Motorsport HA-D 90 Speed Sensor PDF](https://www.bosch-motorsport.com/content/downloads/Raceparts/Resources/pdf/Data%20Sheet_69813003_Speed_Sensor_Hall-Effect_HA-D_90.pdf)
+* **[3]** Bosch Motorsport. *Engineering Analysis Report: Bosch HA-M Speed Sensor — Frequency Response, Operating Error Boundaries, and Real-World Velocity Mapping*. Internal engineering report (`Bosch_HA-M_Sensor_Engineering_Report.pdf`). Note: This report characterises the failure mode above 4.2 kHz qualitatively but provides no quantitative data (amplitude curve, secondary error bounds, or over-speed behaviour). Used for informational context only; the official datasheet [1] remains the primary citable source.
+* **[4]** Ladoiye, J. S., Spry, D., & Jalali, M. (2021). *Health Estimation of Magnetic Wheel Encoder*. Annual Conference of the Prognostics and Health Management Society. Available: [PHM Society Journal](https://papers.phmsociety.org/index.php/phmconf/article/view/2979)

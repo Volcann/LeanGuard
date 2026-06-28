@@ -68,6 +68,32 @@ The Gaussian noise standard deviation as a fraction of the ideal frequency, used
 
 ---
 
+## § Bandwidth Limitations
+
+### `max_operating_frequency_hz` · `float` · default `4200.0`
+
+The maximum operating frequency of the physical Bosch HA-M sensor, in Hz. If the computed ideal pulse frequency exceeds this value, the sensor output is immediately zeroed (`speed_mps = 0.0`, `pulse_frequency_hz = 0.0`).
+
+**Primary source:** Official Bosch HA-M datasheet [1]:
+> *"Max. frequency: ≤ 4.2 kHz"*
+> *"Accuracy repeatability of the falling edge of tooth: < 4% (≤ 4.2 kHz)"*
+
+The datasheet specifies **no behaviour beyond this limit**. The `< 4%` accuracy guarantee ends exactly at 4.2 kHz — nothing further is stated or characterised.
+
+**Why hard dropout and not soft attenuation:**
+
+An exponential soft-clipping model was investigated during development:
+
+$$f_{\text{attenuated}} = f_{\text{max}} \cdot e^{-\alpha (f - f_{\text{max}})}$$
+
+A value of $\alpha = 0.00032$ was initially derived by assuming the sensor retains 15% amplitude at 10,000 Hz (where error was assumed to double to < 8%). After re-reading both primary sources, neither document contains any data point beyond 4,200 Hz — no 10 kHz endpoint, no secondary error bound, no amplitude curve. The $\alpha$ value was unverifiable and the model was dropped entirely.
+
+The **hard cutoff is the only academically defensible implementation** given the available primary sources.
+
+**Practical impact:** For the default setup ($N = 48$, $C = 1.98\text{ m}$), this ceiling maps to $v \approx 173.25\text{ m/s}$ ($\approx 624\text{ km/h}$) — physically unreachable by any production motorcycle. This field is a correctness safety rail, not a normal operating constraint. See `design.md § 2.2` for full justification and speed threshold table.
+
+---
+
 ## § Quantization
 
 ### `enable_quantization` · `bool` · default `True`
