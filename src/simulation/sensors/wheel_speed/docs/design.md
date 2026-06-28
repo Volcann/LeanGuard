@@ -43,7 +43,7 @@ The formula itself is basic physics—converting rotational frequency to linear 
 > ```
 > 1. Calculate revolutions per second:
 >    rev/s = f / N = 480 / 48 = 10 rev/s
-> 
+>
 > 2. Calculate linear speed:
 >    v = rev/s × C = 10 × 1.98 = 19.8 m/s (~71.3 km/h)
 > ```
@@ -99,9 +99,9 @@ Three properties make the Bosch HA-M/HA-D 90 datasheets the correct choice as a 
 * **The Bosch HA-M motorsport sensor** has **3 wires** (Power, Ground, and a separate Signal output). It sends signals as *voltage* pulses, which can be slightly more sensitive to electromagnetic noise from the motorcycle’s engine/ignition than a 2-wire current loop.
 
 ### 2.0.2. Why We Use It Anyway ("Safe Estimate")
-Because production motorcycle manufacturers keep their 2-wire ABS sensor data proprietary (secret), we cannot copy their exact noise profiles. 
+Because production motorcycle manufacturers keep their 2-wire ABS sensor data proprietary (secret), we cannot copy their exact noise profiles.
 
-By using the HA-M's published specifications (which allow for up to `< 4%` noise), we are testing our safety algorithms (DEDR) under a **worst-case (noisier) scenario**. 
+By using the HA-M's published specifications (which allow for up to `< 4%` noise), we are testing our safety algorithms (DEDR) under a **worst-case (noisier) scenario**.
 
 > [!NOTE]
 > *"I acknowledge they have different wiring and slightly different noise behaviors. However, since production data is proprietary, I used the 3-wire HA-M datasheet as a **conservative, worst-case proxy**. If our safety filter can handle the higher noise of the HA-M, it will easily handle the cleaner signal of a production 2-wire ABS sensor."*
